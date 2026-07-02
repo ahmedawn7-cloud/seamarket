@@ -88,23 +88,25 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 }
 
 function normalizeProduct(product: any) {
+  const cleanName = product.clean_name_ai || product.Clean_Name_AI;
+  const productName = product.product_name || product.Product_Name;
+  const name =
+    cleanName && cleanName !== "The language entered is not supported at this time."
+      ? cleanName
+      : productName || "Unknown product";
+
   return {
-    name:
-      product.Clean_Name_AI ||
-      product.clean_name_ai ||
-      product.Product_Name ||
-      product.product_name ||
-      "Unknown product",
-    imageUrl: product.Image_URL || product.image_url,
-    productUrl: product.Product_URL || product.product_url,
+    name,
+    imageUrl: product.image_url || product.Image_URL,
+    productUrl: product.product_url || product.Product_URL,
     platform: getProductPlatform(product),
-    category: product.Category || product.category || "Uncategorized",
-    rank: product.Rank ?? product.rank ?? product.Internal_Rank ?? "N/A",
-    trendRank: product.Trend_Rank ?? product.trend_rank ?? product.Internal_Rank ?? "N/A",
-    price: formatCurrency(product.Price_RM ?? product.price ?? product.Price),
+    category: product.category || product.Category || "Uncategorized",
+    rank: product.rank ?? product.Rank ?? product.Internal_Rank ?? "N/A",
+    trendRank: product.trend_rank ?? product.Trend_Rank ?? product.Internal_Rank ?? "N/A",
+    price: formatCurrency(product.price ?? product.Price_RM ?? product.price_rm ?? product.Price),
     sales: formatNumber(product.Sales ?? product.sales),
-    reviews: formatNumber(product.Review_Count ?? product.review_count),
-    rating: product.Rating_Score ?? product.rating_score ?? "N/A",
+    reviews: formatNumber(product.review_count ?? product.Review_Count),
+    rating: product.rating_score ?? product.Rating_Score ?? "N/A",
   };
 }
 
@@ -121,10 +123,12 @@ function formatNumber(value: any) {
 }
 
 function getProductPlatform(product: any) {
-  const explicitPlatform = product.Platform || product.platform;
+  const explicitPlatform = product.platform || product.Platform;
   if (explicitPlatform) return String(explicitPlatform);
 
-  const searchable = `${product.Product_URL || ""} ${product.Store_Name || ""} ${product.Category || ""}`.toLowerCase();
+  const searchable = `${product.product_url || ""} ${product.Product_URL || ""} ${
+    product.store_name || product.Store_Name || ""
+  } ${product.category || product.Category || ""}`.toLowerCase();
 
   if (searchable.includes("shopee")) return "Shopee";
   if (searchable.includes("lazada")) return "Lazada";
