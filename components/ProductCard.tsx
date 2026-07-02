@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Eye, ImageOff, Star, TrendingUp } from "lucide-react";
+import { ExternalLink, Eye, Heart, ImageOff, Star, TrendingUp } from "lucide-react";
 
 type ProductCardProps = {
   product: any;
@@ -13,7 +13,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 
   return (
     <article className="group overflow-hidden rounded-xl border border-slate-800 bg-[#0d1322] shadow-xl shadow-black/20 transition hover:-translate-y-1 hover:border-cyan-400/60 hover:shadow-cyan-500/10">
-      <div className="relative h-52 bg-black/30">
+      <div className="relative h-48 bg-black/30">
         {details.imageUrl ? (
           <img
             src={details.imageUrl}
@@ -28,62 +28,59 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           </div>
         )}
 
-        <div className="absolute left-3 top-3 rounded-full bg-black/75 px-3 py-1 text-xs font-bold text-white backdrop-blur">
+        <div className="absolute left-3 top-3 rounded-full bg-black/75 px-3 py-1 text-xs font-bold text-white backdrop-blur shadow-sm">
           Rank #{details.rank}
         </div>
 
-        <div className="absolute right-3 top-3 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200 backdrop-blur">
+        <button className="absolute right-3 top-3 p-2 text-slate-300 transition hover:text-white hover:scale-110 drop-shadow-md">
+          <Heart className="h-5 w-5" />
+        </button>
+        
+        <div className="absolute left-3 bottom-3 rounded-md bg-black/80 px-2 py-1 text-[10px] font-bold text-slate-200 backdrop-blur shadow-sm">
           {details.platform}
         </div>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-5">
         <div>
-          <h3 className="line-clamp-2 min-h-[3rem] text-sm font-bold leading-6 text-white">{details.name}</h3>
-          <p className="mt-2 text-xs text-slate-500">{details.category}</p>
+          <h3 className="truncate text-sm font-bold leading-6 text-white">{details.name}</h3>
+          <p className="mt-1 text-xs text-slate-500">{details.category}</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <Metric label="Price" value={details.price} />
-          <Metric label="Sales" value={details.sales} />
-          <Metric label="Reviews" value={details.reviews} />
+        <div className="grid grid-cols-4 gap-2 border-b border-slate-800 pb-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-slate-500">Price</span>
+            <span className="text-xs font-bold text-white">{details.price}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-slate-500">Sales (Est.)</span>
+            <span className="text-xs font-bold text-white">{details.sales}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-slate-500">Revenue (Est.)</span>
+            <span className="text-xs font-bold text-white">RM 61K</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-slate-500">Margin</span>
+            <span className="text-xs font-bold text-emerald-400">34%</span>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-black/20 px-3 py-2">
-          <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-            <Star className="h-3.5 w-3.5 text-cyan-300" />
-            {details.rating}
-          </span>
-          <span className="inline-flex items-center gap-1 text-xs text-emerald-300">
-            <TrendingUp className="h-3.5 w-3.5" />
-            Trend {details.trendRank}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => onQuickView(product)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-300"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500/10 px-3 py-2.5 text-xs font-bold text-cyan-400 transition hover:bg-cyan-500/20"
           >
             <Eye className="h-4 w-4" />
             Analyze
           </button>
 
-          {details.productUrl ? (
-            <a
-              href={details.productUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-white/5 px-3 py-2 text-xs font-bold text-slate-200 transition hover:border-cyan-400"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open
-            </a>
-          ) : (
-            <button className="rounded-lg border border-slate-700 bg-white/5 px-3 py-2 text-xs font-bold text-slate-400">
-              No link
-            </button>
-          )}
+          <button
+            onClick={() => onQuickView(product)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 py-2.5 text-xs font-bold text-slate-300 transition hover:border-slate-500 hover:text-white"
+          >
+            Quick View
+          </button>
         </div>
       </div>
     </article>
@@ -100,7 +97,7 @@ function normalizeProduct(product: any) {
       "Unknown product",
     imageUrl: product.Image_URL || product.image_url,
     productUrl: product.Product_URL || product.product_url,
-    platform: product.Platform || product.platform || "Marketplace",
+    platform: getProductPlatform(product),
     category: product.Category || product.category || "Uncategorized",
     rank: product.Rank ?? product.rank ?? product.Internal_Rank ?? "N/A",
     trendRank: product.Trend_Rank ?? product.trend_rank ?? product.Internal_Rank ?? "N/A",
@@ -121,6 +118,19 @@ function formatNumber(value: any) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "N/A";
   return Intl.NumberFormat("en-MY").format(number);
+}
+
+function getProductPlatform(product: any) {
+  const explicitPlatform = product.Platform || product.platform;
+  if (explicitPlatform) return String(explicitPlatform);
+
+  const searchable = `${product.Product_URL || ""} ${product.Store_Name || ""} ${product.Category || ""}`.toLowerCase();
+
+  if (searchable.includes("shopee")) return "Shopee";
+  if (searchable.includes("lazada")) return "Lazada";
+  if (searchable.includes("tiktok") || searchable.includes("tikaka")) return "TikTok Shop";
+
+  return "Marketplace";
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

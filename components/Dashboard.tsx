@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Beaker, Home, PackageSearch, Search, Truck, User, Users } from "lucide-react";
+import { Activity, Beaker, DollarSign, Filter, Home, PackageSearch, Search, TrendingUp, Truck, User, Users } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import ProductDrawer from "@/components/ProductDrawer";
 import HomeView from "@/components/HomeView";
@@ -16,11 +16,11 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   const [searchQuery, setSearchQuery] = useState("");
   const [drawerProduct, setDrawerProduct] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState("Home");
+  const [activePlatform, setActivePlatform] = useState("All");
 
   const safeProducts = Array.isArray(initialProducts) ? initialProducts : [];
 
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return safeProducts;
     const q = searchQuery.toLowerCase();
 
     return safeProducts.filter((product) => {
@@ -30,12 +30,23 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
         product.Product_Name ||
         product.product_name ||
         "";
-      const platform = product.Platform || product.platform || "";
+      const platform = getProductPlatform(product);
       const category = product.Category || product.category || "";
+      const brand = product.Brand || product.brand || "";
+      const store = product.Store_Name || product.store_name || "";
+      const productUrl = product.Product_URL || product.product_url || "";
 
-      return `${name} ${platform} ${category}`.toLowerCase().includes(q);
+      const platformMatches =
+        activePlatform === "All" ||
+        platform === "Marketplace" ||
+        platform.toLowerCase().includes(activePlatform.toLowerCase());
+      const searchMatches =
+        !q.trim() ||
+        `${name} ${platform} ${category} ${brand} ${store} ${productUrl}`.toLowerCase().includes(q);
+
+      return platformMatches && searchMatches;
     });
-  }, [safeProducts, searchQuery]);
+  }, [safeProducts, searchQuery, activePlatform]);
 
   const tabs = [
     { id: "Home", icon: Home, label: "Home" },
@@ -85,15 +96,10 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                 })}
               </nav>
 
-              <div className="relative hidden w-56 shrink-0 sm:block lg:w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  className="w-full rounded-full border border-slate-700/70 bg-black/30 py-2 pl-10 pr-4 text-sm text-white outline-none transition focus:border-cyan-400"
-                />
+              <div className="hidden shrink-0 sm:block">
+                <button className="rounded-full border border-cyan-400/30 bg-transparent px-5 py-2 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/10">
+                  Login / Sign Up
+                </button>
               </div>
             </div>
 
@@ -126,17 +132,84 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
 
           {activeTab === "Products" && (
             <section className="space-y-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
-                    Product intelligence
-                  </p>
-                  <h1 className="mt-2 text-3xl font-bold text-white">Product radar</h1>
+                  <h1 className="text-3xl font-bold text-white">Product Radar</h1>
                   <p className="mt-2 text-sm text-slate-400">
-                    Click any product to open its analysis drawer.
+                    {safeProducts.length > 0
+                      ? `${safeProducts.length} Supabase products loaded from MYProductScout_Master.`
+                      : "No Supabase products loaded yet."}
                   </p>
                 </div>
-                <p className="text-sm text-slate-400">{filtered.length} products shown</p>
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <span>Last updated: 2 mins ago</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-4">
+                <div className="flex gap-6">
+                  {["All", "Shopee", "Lazada", "TikTok Shop"].map((platform) => (
+                    <button
+                      key={platform}
+                      onClick={() => setActivePlatform(platform)}
+                      className={`pb-4 -mb-[17px] text-sm font-medium transition ${
+                        activePlatform === platform
+                          ? "border-b-2 border-cyan-400 text-cyan-400"
+                          : "border-b-2 border-transparent text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      {platform}
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="flex gap-3">
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search products..."
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      className="w-full rounded-lg border border-slate-700 bg-[#070b16] py-2 pl-10 pr-4 text-sm text-white outline-none transition focus:border-cyan-400"
+                    />
+                  </div>
+                  <button className="flex items-center gap-2 rounded-lg border border-slate-700 bg-[#070b16] px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-400">
+                    <Filter className="h-4 w-4" />
+                    Filters (3)
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-6">
+                <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                    <PackageSearch className="h-4 w-4 text-cyan-400" />
+                    Products Tracked
+                  </div>
+                  <p className="text-2xl font-bold text-white">{safeProducts.length}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-400" />
+                    Shown Now
+                  </div>
+                  <p className="text-2xl font-bold text-white">{filtered.length}</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                    <Activity className="h-4 w-4 text-amber-400" />
+                    Avg. Margin
+                  </div>
+                  <p className="text-2xl font-bold text-white">32.6%</p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                    <DollarSign className="h-4 w-4 text-indigo-400" />
+                    Total Sales (Est.)
+                  </div>
+                  <p className="text-2xl font-bold text-white">RM 3.2M</p>
+                </div>
               </div>
 
               {filtered.length > 0 ? (
@@ -185,4 +258,17 @@ function getProductKey(product: any) {
     product?.Clean_Name_AI ||
     "product"
   );
+}
+
+function getProductPlatform(product: any) {
+  const explicitPlatform = product?.Platform || product?.platform;
+  if (explicitPlatform) return String(explicitPlatform);
+
+  const searchable = `${product?.Product_URL || ""} ${product?.Store_Name || ""} ${product?.Category || ""}`.toLowerCase();
+
+  if (searchable.includes("shopee")) return "Shopee";
+  if (searchable.includes("lazada")) return "Lazada";
+  if (searchable.includes("tiktok") || searchable.includes("tikaka")) return "TikTok Shop";
+
+  return "Marketplace";
 }
