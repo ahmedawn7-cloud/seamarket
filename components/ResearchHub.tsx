@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Bot, Bookmark, Calculator, MessageSquare, Scale, Send, Target, TrendingUp } from "lucide-react";
+import { Bot, Bookmark, Calculator, CalendarDays, Edit3, MessageSquare, Scale, Send, Target, TrendingUp } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -13,37 +13,14 @@ export default function ResearchHub() {
   const [sellPrice, setSellPrice] = useState(39);
   const [shipping, setShipping] = useState(4);
   const [platformFee, setPlatformFee] = useState(8);
-  const [showSaved, setShowSaved] = useState(true);
-  const [savedProducts, setSavedProducts] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [notes, setNotes] = useState("");
   const [messages, setMessages] = useState([
     {
       role: "assistant",
       text: "Ask me what to research: margin, supplier risk, competition, product positioning, or what to check before sourcing.",
     },
   ]);
-
-  useEffect(() => {
-    async function loadSaved() {
-      if (!supabase) return;
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("user_watchlist")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(12);
-
-      setSavedProducts(data ?? []);
-    }
-
-    loadSaved();
-  }, []);
 
   const result = useMemo(() => {
     const fee = sellPrice * (platformFee / 100);
@@ -70,31 +47,32 @@ export default function ResearchHub() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Research Hub</p>
-        <h1 className="mt-2 text-3xl font-bold text-white">AI-assisted product research</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-          Chat, compare, calculate margins, and revisit saved products before deciding what to source.
+        <h1 className="text-3xl font-bold text-white">Research Hub</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+          Chat, compare, calculate margins, and build your product thesis before deciding what to source.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
-          <div className="mb-4 flex items-center gap-3">
-            <Bot className="h-6 w-6 text-cyan-300" />
+        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5 flex flex-col h-[500px]">
+          <div className="mb-4 flex items-center gap-3 border-b border-slate-800 pb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-400">
+              <Bot className="h-5 w-5" />
+            </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Research assistant</h2>
-              <p className="text-sm text-slate-500">AI chat shell ready for future model/API integration.</p>
+              <h2 className="text-lg font-bold text-white">ProfitPilot AI</h2>
+              <p className="text-xs text-slate-500">Always ready to research</p>
             </div>
           </div>
 
-          <div className="mb-4 h-80 space-y-3 overflow-y-auto rounded-xl border border-slate-800 bg-black/20 p-4">
+          <div className="flex-1 space-y-4 overflow-y-auto p-2 pr-4">
             {messages.map((message, index) => (
-              <div key={`${message.role}-${index}`} className={message.role === "user" ? "text-right" : "text-left"}>
+              <div key={`${message.role}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`inline-block max-w-[85%] rounded-xl px-4 py-3 text-sm leading-6 ${
+                  className={`inline-block max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
                     message.role === "user"
-                      ? "bg-cyan-500 text-slate-950"
-                      : "border border-slate-800 bg-[#111827] text-slate-300"
+                      ? "bg-cyan-500 text-slate-950 rounded-br-none"
+                      : "border border-slate-800 bg-[#111827] text-slate-300 rounded-tl-none"
                   }`}
                 >
                   {message.text}
@@ -103,72 +81,86 @@ export default function ResearchHub() {
             ))}
           </div>
 
-          <div className="flex gap-2">
+          <div className="mt-4 flex gap-2 pt-2">
             <input
               value={chatInput}
               onChange={(event) => setChatInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") sendMessage();
               }}
-              placeholder="Ask: Is this product worth sourcing?"
-              className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-400"
+              placeholder="Ask about a product or niche..."
+              className="min-w-0 flex-1 rounded-full border border-slate-700 bg-black/40 px-5 py-3 text-sm text-white outline-none focus:border-cyan-400 transition"
             />
-            <button onClick={sendMessage} className="rounded-lg bg-cyan-500 px-4 text-slate-950 transition hover:bg-cyan-300">
+            <button onClick={sendMessage} className="flex items-center justify-center rounded-full bg-cyan-500 p-3 text-slate-950 transition hover:bg-cyan-300">
               <Send className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Bookmark className="h-5 w-5 text-cyan-300" />
-              <h2 className="text-xl font-bold text-white">Saved research</h2>
+        <div className="flex flex-col gap-6">
+          <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5 h-full flex flex-col">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Edit3 className="h-5 w-5 text-cyan-300" />
+                <h2 className="text-lg font-bold text-white">Research Notes & Docs</h2>
+              </div>
+              <button className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition">Save Notes</button>
             </div>
-            <button
-              onClick={() => setShowSaved((value) => !value)}
-              className="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300 hover:border-cyan-400"
-            >
-              {showSaved ? "Hide" : "Show"}
-            </button>
+            <textarea 
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Jot down your product thesis, supplier links, and cost estimates here..."
+              className="w-full flex-1 resize-none rounded-lg border border-slate-800 bg-[#070b16] p-4 text-sm leading-6 text-slate-300 outline-none focus:border-cyan-400/50 transition"
+            />
           </div>
-
-          {showSaved && (
-            <div className="space-y-3">
-              {savedProducts.length > 0 ? (
-                savedProducts.map((item) => {
-                  const snapshot = item.snapshot || {};
-                  const name = snapshot.Clean_Name_AI || snapshot.Product_Name || "Saved product";
-                  return (
-                    <div key={item.id} className="rounded-lg border border-slate-800 bg-black/20 p-4">
-                      <p className="font-bold text-white">{name}</p>
-                      <p className="mt-1 text-xs text-slate-500">Saved {new Date(item.created_at).toLocaleDateString()}</p>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="rounded-lg border border-dashed border-slate-700 p-5 text-sm leading-6 text-slate-400">
-                  Saved products will appear here after users log in and save products from the analytics drawer.
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        {[
-          { label: "Compare products", icon: Scale, text: "Line up products before choosing one." },
-          { label: "Opportunity score", icon: Target, text: "Score demand, profit, and competition." },
-          { label: "Trend view", icon: TrendingUp, text: "Watch momentum before it peaks." },
-          { label: "Research notes", icon: MessageSquare, text: "Keep decisions tied to evidence." },
-        ].map((tool) => (
-          <div key={tool.label} className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
-            <tool.icon className="mb-4 h-6 w-6 text-cyan-300" />
-            <h3 className="font-bold text-white">{tool.label}</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-400">{tool.text}</p>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <CalendarDays className="h-5 w-5 text-amber-300" />
+            <h2 className="text-xl font-bold text-white">Seasonality Calendar</h2>
           </div>
-        ))}
+          <div className="grid grid-cols-4 gap-2">
+            {["Q1 (Jan-Mar)", "Q2 (Apr-Jun)", "Q3 (Jul-Sep)", "Q4 (Oct-Dec)"].map((q, idx) => (
+              <div key={q} className={`rounded-lg border border-slate-800 p-3 text-center ${idx === 2 ? "bg-amber-500/10 border-amber-500/30" : "bg-black/20"}`}>
+                <p className={`text-xs font-bold ${idx === 2 ? "text-amber-300" : "text-slate-400"}`}>{q}</p>
+                <div className="mt-2 space-y-1">
+                  <div className={`h-1.5 w-full rounded-full ${idx === 2 ? "bg-amber-400" : "bg-slate-700"}`}></div>
+                  <div className={`h-1.5 w-3/4 mx-auto rounded-full ${idx === 2 ? "bg-amber-400/50" : "bg-slate-700/50"}`}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs leading-5 text-slate-400">
+            <strong>Insight:</strong> Peak demand for Sports & Outdoors occurs in Q3. Consider ramping up inventory by late June.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <Target className="h-5 w-5 text-indigo-300" />
+            <h2 className="text-xl font-bold text-white">Target Audience Insights</h2>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-sm text-slate-400">Demographic</span>
+              <span className="text-sm font-medium text-white">Males, 18-34 (62%)</span>
+            </div>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-sm text-slate-400">Primary Geo</span>
+              <span className="text-sm font-medium text-white">Kuala Lumpur, Selangor</span>
+            </div>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-sm text-slate-400">Interests</span>
+              <span className="text-sm font-medium text-white">Gym, Crossfit, Running</span>
+            </div>
+          </div>
+          <p className="mt-4 text-xs leading-5 text-slate-400">
+            <strong>Hook Idea:</strong> "Stop hurting your back during deadlifts..."
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
@@ -207,7 +199,7 @@ function NumberInput({ label, value, onChange }: { label: string; value: number;
         type="number"
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-400"
+        className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-400 transition"
       />
     </label>
   );

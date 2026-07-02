@@ -23,11 +23,11 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
           Southeast Asia product intelligence
         </div>
 
-        <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white md:text-6xl">
+        <h1 className="max-w-4xl text-3xl font-bold tracking-tight text-white md:text-5xl">
           Stop guessing what sells. <span className="text-cyan-300">Start knowing.</span>
         </h1>
 
-        <p className="mx-auto max-w-2xl text-lg leading-8 text-slate-400">
+        <p className="mx-auto max-w-2xl text-base leading-7 text-slate-400">
           Profit Pilot AI helps sellers spot rising products, compare marketplaces, and turn messy Shopee, Lazada, and TikTok Shop signals into clear action.
         </p>
 
@@ -48,9 +48,9 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
         </div>
       </section>
 
-      <section id="demo-videos" className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-3">
+      <section id="demo-videos" className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3">
         {VIDEO_URLS.map((url) => (
-          <div key={url} className="h-64 overflow-hidden rounded-xl border border-slate-800 bg-black shadow-xl transition hover:border-cyan-400/50">
+          <div key={url} className="h-48 overflow-hidden rounded-xl border border-slate-800 bg-black shadow-xl transition hover:border-cyan-400/50">
             <video autoPlay loop muted playsInline preload="metadata" className="h-full w-full object-cover">
               <source src={url} type="video/mp4" />
             </video>
