@@ -45,6 +45,7 @@ export async function GET() {
         count,
         sampleRows: data?.length ?? 0,
         columns: data?.[0] ? Object.keys(data[0]) : [],
+        sample: data?.[0] ? normalizeProductSample(data[0]) : null,
         error: error
           ? {
               code: error.code,
@@ -65,4 +66,44 @@ export async function GET() {
     },
     tables,
   });
+}
+
+function normalizeProductSample(product: any) {
+  const cleanName = readField(product, ["Clean_Name_AI", "clean_name_ai"]);
+  const productName = readField(product, ["Product_Name", "product_name"]);
+
+  return {
+    name:
+      cleanName && cleanName !== "The language entered is not supported at this time."
+        ? cleanName
+        : productName,
+    productName,
+    imageUrlPresent: Boolean(readField(product, ["Image_URL", "image_url"])),
+    productUrlPresent: Boolean(readField(product, ["Product_URL", "product_url"])),
+    rank: readField(product, ["Rank", "rank", "Internal_Rank", "internal_rank"]),
+    price: readField(product, ["Price_RM", "price", "Final_Price_Low"]),
+    sales: readField(product, ["Sales", "sales"]),
+    category: readField(product, ["Category", "category"]),
+  };
+}
+
+function readField(product: any, fieldNames: string[]) {
+  if (!product || typeof product !== "object") return undefined;
+
+  for (const fieldName of fieldNames) {
+    if (product[fieldName] !== undefined && product[fieldName] !== null && product[fieldName] !== "") {
+      return product[fieldName];
+    }
+  }
+
+  const normalizedLookup = new Map(
+    Object.keys(product).map((key) => [key.trim().toLowerCase(), product[key]]),
+  );
+
+  for (const fieldName of fieldNames) {
+    const value = normalizedLookup.get(fieldName.trim().toLowerCase());
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+
+  return undefined;
 }

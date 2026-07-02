@@ -106,6 +106,7 @@ function normalizeProductRow(product: any) {
     clean_name_ai: usableCleanName,
     product_name: productName,
     image_url: getProxiedImageUrl(imageUrl, productUrl),
+    original_image_url: imageUrl,
     product_url: productUrl,
     platform: getProductPlatform(product),
     category,

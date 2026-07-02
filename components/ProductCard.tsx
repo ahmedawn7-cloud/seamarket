@@ -88,8 +88,8 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 }
 
 function normalizeProduct(product: any) {
-  const cleanName = product.clean_name_ai || product.Clean_Name_AI;
-  const productName = product.product_name || product.Product_Name;
+  const cleanName = readField(product, ["clean_name_ai", "Clean_Name_AI"]);
+  const productName = readField(product, ["product_name", "Product_Name"]);
   const name =
     cleanName && cleanName !== "The language entered is not supported at this time."
       ? cleanName
@@ -97,16 +97,16 @@ function normalizeProduct(product: any) {
 
   return {
     name,
-    imageUrl: product.image_url || product.Image_URL,
-    productUrl: product.product_url || product.Product_URL,
+    imageUrl: readField(product, ["image_url", "Image_URL", "original_image_url"]),
+    productUrl: readField(product, ["product_url", "Product_URL"]),
     platform: getProductPlatform(product),
-    category: product.category || product.Category || "Uncategorized",
-    rank: product.rank ?? product.Rank ?? product.Internal_Rank ?? "N/A",
-    trendRank: product.trend_rank ?? product.Trend_Rank ?? product.Internal_Rank ?? "N/A",
-    price: formatCurrency(product.price ?? product.Price_RM ?? product.price_rm ?? product.Price),
-    sales: formatNumber(product.Sales ?? product.sales),
-    reviews: formatNumber(product.review_count ?? product.Review_Count),
-    rating: product.rating_score ?? product.Rating_Score ?? "N/A",
+    category: readField(product, ["category", "Category"]) || "Uncategorized",
+    rank: readField(product, ["rank", "Rank", "Internal_Rank", "internal_rank"]) ?? "N/A",
+    trendRank: readField(product, ["trend_rank", "Trend_Rank", "Internal_Rank", "internal_rank"]) ?? "N/A",
+    price: formatCurrency(readField(product, ["price", "Price_RM", "price_rm", "Price", "Final_Price_Low"])),
+    sales: formatNumber(readField(product, ["sales", "Sales"])),
+    reviews: formatNumber(readField(product, ["review_count", "Review_Count"])),
+    rating: readField(product, ["rating_score", "Rating_Score"]) ?? "N/A",
   };
 }
 
@@ -123,18 +123,39 @@ function formatNumber(value: any) {
 }
 
 function getProductPlatform(product: any) {
-  const explicitPlatform = product.platform || product.Platform;
+  const explicitPlatform = readField(product, ["platform", "Platform"]);
   if (explicitPlatform) return String(explicitPlatform);
 
-  const searchable = `${product.product_url || ""} ${product.Product_URL || ""} ${
-    product.store_name || product.Store_Name || ""
-  } ${product.category || product.Category || ""}`.toLowerCase();
+  const searchable = `${readField(product, ["product_url", "Product_URL"]) || ""} ${
+    readField(product, ["store_name", "Store_Name"]) || ""
+  } ${readField(product, ["category", "Category"]) || ""}`.toLowerCase();
 
   if (searchable.includes("shopee")) return "Shopee";
   if (searchable.includes("lazada")) return "Lazada";
   if (searchable.includes("tiktok") || searchable.includes("tikaka")) return "TikTok Shop";
 
   return "Marketplace";
+}
+
+function readField(product: any, fieldNames: string[]) {
+  if (!product || typeof product !== "object") return undefined;
+
+  for (const fieldName of fieldNames) {
+    if (product[fieldName] !== undefined && product[fieldName] !== null && product[fieldName] !== "") {
+      return product[fieldName];
+    }
+  }
+
+  const normalizedLookup = new Map(
+    Object.keys(product).map((key) => [key.trim().toLowerCase(), product[key]]),
+  );
+
+  for (const fieldName of fieldNames) {
+    const value = normalizedLookup.get(fieldName.trim().toLowerCase());
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+
+  return undefined;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
