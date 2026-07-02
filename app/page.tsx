@@ -105,7 +105,7 @@ function normalizeProductRow(product: any) {
     ...product,
     clean_name_ai: usableCleanName,
     product_name: productName,
-    image_url: imageUrl,
+    image_url: getProxiedImageUrl(imageUrl, productUrl),
     product_url: productUrl,
     platform: getProductPlatform(product),
     category,
@@ -124,6 +124,15 @@ function normalizeProductRow(product: any) {
       product?.Shipping_Location || product?.shipping_location || product?.Shipping_Location_1 || "",
     variant_count: product?.Variant_Count ?? product?.variant_count ?? null,
   };
+}
+
+function getProxiedImageUrl(imageUrl: string, productUrl: string) {
+  if (!imageUrl) return "";
+
+  const params = new URLSearchParams({ url: imageUrl });
+  if (productUrl) params.set("referer", productUrl);
+
+  return `/api/image-proxy?${params.toString()}`;
 }
 
 function getProductPlatform(product: any) {
