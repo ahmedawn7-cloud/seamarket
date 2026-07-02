@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Beaker, DollarSign, Filter, Home, PackageSearch, Search, TrendingUp, Truck, User, Users } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import ProductDrawer from "@/components/ProductDrawer";
@@ -13,12 +13,51 @@ import UserDashboard from "@/components/UserDashboard";
 const LOGO_URL = "/profit-pilot-logo.png";
 
 export default function Dashboard({ initialProducts }: { initialProducts: any[] }) {
+  const [products, setProducts] = useState<any[]>(Array.isArray(initialProducts) ? initialProducts : []);
+  const [productsStatus, setProductsStatus] = useState<"loading" | "ready" | "error">(
+    initialProducts?.length ? "ready" : "loading",
+  );
+  const [productsError, setProductsError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [drawerProduct, setDrawerProduct] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState("Home");
   const [activePlatform, setActivePlatform] = useState("All");
 
-  const safeProducts = Array.isArray(initialProducts) ? initialProducts : [];
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProducts() {
+      setProductsStatus("loading");
+      setProductsError("");
+
+      try {
+        const response = await fetch("/api/products", { cache: "no-store" });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Product API request failed.");
+        }
+
+        if (isMounted) {
+          setProducts(Array.isArray(payload.products) ? payload.products : []);
+          setProductsStatus("ready");
+        }
+      } catch (error) {
+        if (isMounted) {
+          setProductsStatus("error");
+          setProductsError(error instanceof Error ? error.message : "Product API request failed.");
+        }
+      }
+    }
+
+    loadProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const safeProducts = products;
 
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -136,10 +175,15 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                 <div>
                   <h1 className="text-3xl font-bold text-white">Product Radar</h1>
                   <p className="mt-2 text-sm text-slate-400">
-                    {safeProducts.length > 0
-                      ? `${safeProducts.length} Supabase products loaded from MYProductScout_Master.`
-                      : "No Supabase products loaded yet."}
+                    {productsStatus === "loading"
+                      ? "Loading Supabase products..."
+                      : safeProducts.length > 0
+                        ? `${safeProducts.length} Supabase products loaded from MYProductScout_Master.`
+                        : "No Supabase products loaded yet."}
                   </p>
+                  {productsStatus === "error" && (
+                    <p className="mt-2 text-xs text-red-300">Product API error: {productsError}</p>
+                  )}
                   {safeProducts[0] && (
                     <p className="mt-2 max-w-3xl text-xs text-cyan-300">
                       First product: {getDisplayProductName(safeProducts[0])} / Rank{" "}
