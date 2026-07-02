@@ -140,6 +140,12 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                       ? `${safeProducts.length} Supabase products loaded from MYProductScout_Master.`
                       : "No Supabase products loaded yet."}
                   </p>
+                  {safeProducts[0] && (
+                    <p className="mt-2 max-w-3xl text-xs text-cyan-300">
+                      First product: {getDisplayProductName(safeProducts[0])} / Rank{" "}
+                      {getDisplayProductRank(safeProducts[0])} / RM {getDisplayProductPrice(safeProducts[0])}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-500">
                   <span>Last updated: 2 mins ago</span>
@@ -271,4 +277,21 @@ function getProductPlatform(product: any) {
   if (searchable.includes("tiktok") || searchable.includes("tikaka")) return "TikTok Shop";
 
   return "Marketplace";
+}
+
+function getDisplayProductName(product: any) {
+  const cleanName = product?.clean_name_ai || product?.Clean_Name_AI;
+  const productName = product?.product_name || product?.Product_Name;
+
+  return cleanName && cleanName !== "The language entered is not supported at this time."
+    ? cleanName
+    : productName || "Missing name";
+}
+
+function getDisplayProductRank(product: any) {
+  return product?.rank ?? product?.Rank ?? product?.Internal_Rank ?? "Missing rank";
+}
+
+function getDisplayProductPrice(product: any) {
+  return product?.price ?? product?.Price_RM ?? product?.Final_Price_Low ?? "Missing price";
 }
