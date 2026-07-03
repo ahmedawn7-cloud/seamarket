@@ -81,6 +81,12 @@ export default function AuthPanel({
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    if (mode === "signin" && !password.trim()) {
+      setStatus("error");
+      setMessage("Enter your password, or use the passwordless login link button below.");
+      return;
+    }
+
     const result =
       mode === "signup"
         ? await supabase.auth.signUp({
@@ -98,11 +104,7 @@ export default function AuthPanel({
 
     if (result.error) {
       setStatus("error");
-      setMessage(
-        result.error.message.toLowerCase().includes("confirm")
-          ? "This account exists but the email is not confirmed yet. Check spam/promotions or resend confirmation below."
-          : result.error.message,
-      );
+      setMessage(formatAuthError(result.error.message));
       setNeedsConfirmation(result.error.message.toLowerCase().includes("confirm"));
       return;
     }
@@ -144,17 +146,47 @@ export default function AuthPanel({
     if (error) {
       setStatus("error");
       setNeedsConfirmation(true);
-      setMessage(
-        error.message.toLowerCase().includes("rate")
-          ? "Supabase is rate-limiting confirmation emails. Wait a while or temporarily disable email confirmation in Supabase Auth settings."
-          : error.message,
-      );
+      setMessage(formatAuthError(error.message));
       return;
     }
 
     setStatus("success");
     setNeedsConfirmation(true);
     setMessage("Confirmation email resent. Check inbox, spam, and promotions.");
+  }
+
+  async function sendPasswordlessLink() {
+    setStatus("loading");
+    setMessage("");
+    setNeedsConfirmation(false);
+
+    if (!supabase) {
+      setStatus("error");
+      setMessage("Supabase is not configured.");
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.signInWithOtp({
+      email: normalizedEmail,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: getEmailRedirectUrl(),
+        data: {
+          display_name: displayName.trim(),
+          business_type: businessType,
+        },
+      },
+    });
+
+    if (error) {
+      setStatus("error");
+      setMessage(formatAuthError(error.message));
+      return;
+    }
+
+    setStatus("success");
+    setMessage("Passwordless login link sent. Check inbox, spam, and promotions.");
   }
 
   return (
@@ -213,7 +245,14 @@ export default function AuthPanel({
           )}
 
           <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" required />
-          <Field label="Password" value={password} onChange={setPassword} placeholder="Minimum 6 characters" type="password" required />
+          <Field
+            label={mode === "signup" ? "Password" : "Password"}
+            value={password}
+            onChange={setPassword}
+            placeholder={mode === "signup" ? "Minimum 6 characters" : "Password, or use email link below"}
+            type="password"
+            required={mode === "signup"}
+          />
 
           {status === "error" && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{message}</div>
@@ -242,9 +281,18 @@ export default function AuthPanel({
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={sendPasswordlessLink}
+            disabled={status === "loading" || !email.trim()}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-white/5 px-5 py-3 font-bold text-white transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Send passwordless login link
+          </button>
+
           <p className="rounded-lg border border-slate-800 bg-black/20 p-3 text-xs leading-5 text-slate-400">
-            If no email arrives, check Supabase Authentication &gt; Users to confirm the account exists. During setup,
-            you can temporarily turn off email confirmation in Supabase Authentication &gt; Providers &gt; Email.
+            If Supabase says rate limit exceeded, wait before requesting again or connect SMTP in Supabase. If no email
+            arrives, check Authentication &gt; Users to confirm the account exists.
           </p>
         </form>
 
@@ -262,6 +310,20 @@ export default function AuthPanel({
       </div>
     </div>
   );
+}
+
+function formatAuthError(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("rate")) {
+    return "Supabase email rate limit exceeded. This limit is controlled by Supabase email delivery. Wait before trying again, or connect a custom SMTP provider in Supabase Authentication settings.";
+  }
+  if (lower.includes("confirm")) {
+    return "This account exists but the email is not confirmed yet. Check spam/promotions or resend confirmation below.";
+  }
+  if (lower.includes("invalid login")) {
+    return "Invalid email or password. If you have not confirmed your email yet, use resend confirmation or passwordless login.";
+  }
+  return message;
 }
 
 function Field({
