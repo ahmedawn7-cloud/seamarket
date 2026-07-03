@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, ServerCog, Sun, TrendingUp, Truck, User, Users, X } from "lucide-react";
+import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, Sun, TrendingUp, Truck, User, Users, X } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import ProductDrawer from "@/components/ProductDrawer";
 import HomeView from "@/components/HomeView";
@@ -11,7 +11,6 @@ import CommunityHub from "@/components/CommunityHub";
 import ResearchHub from "@/components/ResearchHub";
 import SourcingIntelligence from "@/components/SourcingIntelligence";
 import UserDashboard from "@/components/UserDashboard";
-import OperationsCenter from "@/components/OperationsCenter";
 import AuthPanel, { getAccessPlan, type AccessPlan } from "@/components/AuthPanel";
 import AccessGate from "@/components/AccessGate";
 
@@ -204,7 +203,6 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     { id: "Sourcing", icon: Truck, label: "Sourcing" },
     { id: "Community", icon: Users, label: "Community" },
     { id: "Profile", icon: User, label: "User Dashboard" },
-    { id: "Operations", icon: ServerCog, label: "Operations" },
   ];
 
   return (
@@ -518,17 +516,6 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               onLogin={() => setIsAuthOpen(true)}
             >
               <UserDashboard session={session} accessPlan={accessPlan} />
-            </AccessGate>
-          )}
-          {activeTab === "Operations" && (
-            <AccessGate
-              plan={accessPlan}
-              required="pro"
-              title="Operations Center requires Pro access"
-              description="Backend diagnostics, database health, and scraper bot controls are restricted to operators."
-              onLogin={() => setIsAuthOpen(true)}
-            >
-              <OperationsCenter />
             </AccessGate>
           )}
         </main>
