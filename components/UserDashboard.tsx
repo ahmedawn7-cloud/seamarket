@@ -9,6 +9,7 @@ import type { AccessPlan } from "@/components/AuthPanel";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const LOCAL_PROFILE_KEY = "profitpilot-local-profile";
 
 export default function UserDashboard({ session, accessPlan }: { session: Session | null; accessPlan: AccessPlan }) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -19,6 +20,14 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
   const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
+    const localProfile = loadLocalProfile();
+    if (localProfile) {
+      setDisplayName(localProfile.displayName ?? "");
+      setBusinessType(localProfile.businessType ?? "Seller");
+      setCountry(localProfile.country ?? "Malaysia");
+      setAvatarPreview(localProfile.avatarPreview ?? null);
+    }
+
     if (!supabase || !session?.user) return;
 
     let isMounted = true;
@@ -31,7 +40,7 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
         .maybeSingle();
 
       if (error) {
-        setSaveMessage("Profile table is not ready yet. Run SUPABASE_ACCESS_SETUP.sql in Supabase SQL Editor.");
+        setSaveMessage("Loaded local profile. Run SUPABASE_ACCESS_SETUP.sql to enable cloud profile saving.");
         return;
       }
 
@@ -51,13 +60,19 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setAvatarPreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarPreview(typeof reader.result === "string" ? reader.result : null);
+    };
+    reader.readAsDataURL(file);
   }
 
   async function saveProfile() {
     setSaveMessage("");
+    saveLocalProfile({ displayName, businessType, country, avatarPreview });
+
     if (!supabase || !session?.user) {
-      setSaveMessage("Login is required before saving profile settings.");
+      setSaveMessage("Profile saved locally. Login is required for cloud saving.");
       return;
     }
 
@@ -73,7 +88,7 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
     setSaveMessage(
       error
         ? error.message.includes("schema cache") || error.message.includes("user_profiles")
-          ? "Profile table is missing. Run SUPABASE_ACCESS_SETUP.sql in Supabase SQL Editor, then refresh this page."
+        ? "Profile table is missing. Run SUPABASE_ACCESS_SETUP.sql in Supabase SQL Editor, then refresh this page."
           : error.message
         : "Profile saved to Supabase.",
     );
@@ -192,6 +207,26 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
       </section>
     </div>
   );
+}
+
+function loadLocalProfile() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LOCAL_PROFILE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLocalProfile(profile: {
+  displayName: string;
+  businessType: string;
+  country: string;
+  avatarPreview: string | null;
+}) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(profile));
 }
 
 function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {

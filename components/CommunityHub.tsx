@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Star, Users } from "lucide-react";
@@ -8,6 +8,7 @@ import { Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Star, Users } fro
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const LOCAL_POSTS_KEY = "profitpilot-local-community-posts";
 
 const mockPosts = [
   {
@@ -56,6 +57,13 @@ export default function CommunityHub({ session }: { session: Session | null }) {
   const [posts, setPosts] = useState(mockPosts);
   const [postStatus, setPostStatus] = useState("");
 
+  useEffect(() => {
+    const localPosts = loadLocalPosts();
+    if (localPosts.length > 0) {
+      setPosts([...localPosts, ...mockPosts]);
+    }
+  }, []);
+
   async function createPost() {
     const content = postText.trim();
     if (!content) {
@@ -75,8 +83,9 @@ export default function CommunityHub({ session }: { session: Session | null }) {
     };
 
     setPosts((current) => [newPost, ...current]);
+    saveLocalPost(newPost);
     setPostText("");
-    setPostStatus("Posted locally.");
+    setPostStatus("Posted and saved locally.");
 
     if (!supabase || !session?.user) return;
 
@@ -88,7 +97,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
 
     setPostStatus(
       error
-        ? `Posted locally. Supabase save needs community_posts setup: ${error.message}`
+        ? `Saved locally. Supabase cloud save needs community_posts setup: ${error.message}`
         : "Posted and saved to Supabase.",
     );
   }
@@ -215,4 +224,29 @@ export default function CommunityHub({ session }: { session: Session | null }) {
       </div>
     </div>
   );
+}
+
+function loadLocalPosts() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_POSTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalPost(post: {
+  id: number;
+  author: string;
+  role: string;
+  time: string;
+  content: string;
+  likes: number;
+  comments: number;
+  rating: number;
+}) {
+  if (typeof window === "undefined") return;
+  const existing = loadLocalPosts();
+  localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify([post, ...existing].slice(0, 50)));
 }
