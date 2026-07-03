@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Star, Users } from "lucide-react";
+import { Bell, Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Star, Users } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const LOCAL_POSTS_KEY = "profitpilot-local-community-posts";
 const LOCAL_PROFILE_KEY = "profitpilot-local-profile";
+const TELEGRAM_SETTINGS_KEY = "profitpilot-telegram-settings";
 const MAX_LOCAL_POSTS = 20;
 
 const mockPosts: CommunityPost[] = [
@@ -58,12 +59,16 @@ export default function CommunityHub({ session }: { session: Session | null }) {
   const [postText, setPostText] = useState("");
   const [posts, setPosts] = useState<CommunityPost[]>(mockPosts);
   const [postStatus, setPostStatus] = useState("");
+  const [telegramChatId, setTelegramChatId] = useState("");
+  const [telegramStatus, setTelegramStatus] = useState("");
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<CommunityPost | null>(null);
 
   useEffect(() => {
     const profile = loadLocalProfile();
+    const telegram = loadTelegramSettings();
     setLocalProfile(profile);
+    setTelegramChatId(telegram.chatId || "");
 
     const localPosts = loadLocalPosts();
     if (localPosts.length > 0) {
@@ -113,6 +118,29 @@ export default function CommunityHub({ session }: { session: Session | null }) {
         ? `Saved locally. Supabase cloud save needs community_posts setup: ${error.message}`
         : "Posted and saved to Supabase.",
     );
+  }
+
+  async function sendTelegramTest() {
+    const chatId = telegramChatId.trim();
+    if (!chatId) {
+      setTelegramStatus("Enter your Telegram chat ID first.");
+      return;
+    }
+
+    localStorage.setItem(TELEGRAM_SETTINGS_KEY, JSON.stringify({ chatId }));
+    setTelegramStatus("Sending test alert...");
+
+    const response = await fetch("/api/telegram/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chatId,
+        text: "Profit Pilot AI Telegram alerts are connected. Community and product alerts can be sent here.",
+      }),
+    });
+    const payload = await response.json();
+
+    setTelegramStatus(payload.ok ? "Telegram connected. Test alert sent." : `Telegram setup needed: ${payload.error}`);
   }
 
   return (
@@ -216,6 +244,31 @@ export default function CommunityHub({ session }: { session: Session | null }) {
 
         <div className="space-y-6">
           <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <Bell className="h-5 w-5 text-cyan-300" />
+              <div>
+                <h3 className="font-bold text-white">Telegram alerts</h3>
+                <p className="mt-1 text-xs text-slate-500">Free Telegram bot alerts for community and product signals.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <input
+                value={telegramChatId}
+                onChange={(event) => setTelegramChatId(event.target.value)}
+                placeholder="Telegram chat ID"
+                className="w-full rounded-lg border border-slate-700 bg-[#070b16] px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+              />
+              <button
+                onClick={sendTelegramTest}
+                className="w-full rounded-lg bg-cyan-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+              >
+                Send test alert
+              </button>
+              {telegramStatus && <p className="text-xs leading-5 text-cyan-300">{telegramStatus}</p>}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
             <h3 className="font-bold text-white mb-4">Trending Topics</h3>
             <div className="space-y-4">
               {topics.map(topic => (
@@ -284,6 +337,16 @@ function loadLocalProfile(): LocalProfile | null {
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
+  }
+}
+
+function loadTelegramSettings() {
+  if (typeof window === "undefined") return { chatId: "" };
+  try {
+    const raw = localStorage.getItem(TELEGRAM_SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : { chatId: "" };
+  } catch {
+    return { chatId: "" };
   }
 }
 

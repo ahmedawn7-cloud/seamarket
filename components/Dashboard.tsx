@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, Sun, TrendingUp, Truck, User, Users } from "lucide-react";
+import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, Sun, TrendingUp, Truck, User, Users, X } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import ProductDrawer from "@/components/ProductDrawer";
 import HomeView from "@/components/HomeView";
@@ -27,8 +27,13 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   const [productsError, setProductsError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [drawerProduct, setDrawerProduct] = useState<any | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState("Home");
   const [activePlatform, setActivePlatform] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [profilePlan, setProfilePlan] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -123,9 +128,19 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   const safeProducts = products;
   const accessPlan = devAdminUnlocked ? "pro" : getAccessPlan(session, profilePlan);
   const productLimit = accessPlan === "pro" ? safeProducts.length : accessPlan === "registered" ? 100 : 12;
+  const categoryOptions = useMemo(() => {
+    const categories = new Set<string>();
+    safeProducts.forEach((product) => {
+      const category = String(product.Category || product.category || "").trim();
+      if (category) categories.add(category);
+    });
+    return ["All", ...Array.from(categories).sort((a, b) => a.localeCompare(b)).slice(0, 60)];
+  }, [safeProducts]);
 
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase();
+    const min = Number(minPrice);
+    const max = Number(maxPrice);
 
     return safeProducts.slice(0, productLimit || safeProducts.length).filter((product) => {
       const name =
@@ -139,18 +154,22 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
       const brand = product.Brand || product.brand || "";
       const store = product.Store_Name || product.store_name || "";
       const productUrl = product.Product_URL || product.product_url || "";
+      const price = getProductPriceNumber(product);
 
       const platformMatches =
         activePlatform === "All" ||
         platform === "Marketplace" ||
         platform.toLowerCase().includes(activePlatform.toLowerCase());
+      const categoryMatches = categoryFilter === "All" || category === categoryFilter;
+      const minMatches = !minPrice || (Number.isFinite(min) && price >= min);
+      const maxMatches = !maxPrice || (Number.isFinite(max) && price <= max);
       const searchMatches =
         !q.trim() ||
         `${name} ${platform} ${category} ${brand} ${store} ${productUrl}`.toLowerCase().includes(q);
 
-      return platformMatches && searchMatches;
+      return platformMatches && categoryMatches && minMatches && maxMatches && searchMatches;
     });
-  }, [safeProducts, searchQuery, activePlatform, productLimit]);
+  }, [safeProducts, searchQuery, activePlatform, categoryFilter, minPrice, maxPrice, productLimit]);
 
   async function handleSignOut() {
     if (!supabase) return;
@@ -330,20 +349,8 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               </div>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-4">
-                <div className="flex gap-6">
-                  {["All", "Shopee", "Lazada", "TikTok Shop"].map((platform) => (
-                    <button
-                      key={platform}
-                      onClick={() => setActivePlatform(platform)}
-                      className={`pb-4 -mb-[17px] text-sm font-medium transition ${
-                        activePlatform === platform
-                          ? "border-b-2 border-cyan-400 text-cyan-400"
-                          : "border-b-2 border-transparent text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      {platform}
-                    </button>
-                  ))}
+                <div className="text-sm text-slate-400">
+                  Use filters to narrow by platform, category, and price.
                 </div>
                 
                 <div className="flex gap-3">
@@ -357,12 +364,64 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                       className="w-full rounded-lg border border-slate-700 bg-[#070b16] py-2 pl-10 pr-4 text-sm text-white outline-none transition focus:border-cyan-400"
                     />
                   </div>
-                  <button className="flex items-center gap-2 rounded-lg border border-slate-700 bg-[#070b16] px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-400">
+                  <button
+                    onClick={() => setFiltersOpen((value) => !value)}
+                    className="flex items-center gap-2 rounded-lg border border-slate-700 bg-[#070b16] px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-400"
+                  >
                     <Filter className="h-4 w-4" />
-                    Filters (3)
+                    Filters
                   </button>
                 </div>
               </div>
+
+              {filtersOpen && (
+                <div className="grid gap-3 rounded-xl border border-slate-800 bg-[#0d1322] p-4 md:grid-cols-4">
+                  <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                    Platform
+                    <select
+                      value={activePlatform}
+                      onChange={(event) => setActivePlatform(event.target.value)}
+                      className="rounded-lg border border-slate-700 bg-[#070b16] px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none"
+                    >
+                      {["All", "Shopee", "Lazada", "TikTok Shop"].map((platform) => (
+                        <option key={platform}>{platform}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                    Category
+                    <select
+                      value={categoryFilter}
+                      onChange={(event) => setCategoryFilter(event.target.value)}
+                      className="rounded-lg border border-slate-700 bg-[#070b16] px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none"
+                    >
+                      {categoryOptions.map((category) => (
+                        <option key={category}>{category}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                    Min price RM
+                    <input
+                      type="number"
+                      value={minPrice}
+                      onChange={(event) => setMinPrice(event.target.value)}
+                      placeholder="0"
+                      className="rounded-lg border border-slate-700 bg-[#070b16] px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                    Max price RM
+                    <input
+                      type="number"
+                      value={maxPrice}
+                      onChange={(event) => setMaxPrice(event.target.value)}
+                      placeholder="100"
+                      className="rounded-lg border border-slate-700 bg-[#070b16] px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none"
+                    />
+                  </label>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-6">
                 <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
@@ -403,6 +462,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                       product={product}
                       onResearch={(item) => setDrawerProduct(item)}
                       onQuickView={(item) => setDrawerProduct(item)}
+                      onPreview={(item) => setPreviewProduct(item)}
                     />
                   ))}
                 </div>
@@ -422,7 +482,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               description="Create a free account to save research notes, use the AI research workspace, and build product validation workflows."
               onLogin={() => setIsAuthOpen(true)}
             >
-              <ResearchHub session={session} />
+              <ResearchHub session={session} products={safeProducts} />
             </AccessGate>
           )}
           {activeTab === "Sourcing" && (
@@ -476,6 +536,14 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
           setActiveTab("Research");
         }}
       />
+      <ProductSummaryModal
+        product={previewProduct}
+        onClose={() => setPreviewProduct(null)}
+        onAnalyze={(product) => {
+          setPreviewProduct(null);
+          setDrawerProduct(product);
+        }}
+      />
       <AuthPanel
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
@@ -524,4 +592,81 @@ function getDisplayProductRank(product: any) {
 
 function getDisplayProductPrice(product: any) {
   return product?.price ?? product?.Price_RM ?? product?.Final_Price_Low ?? "Missing price";
+}
+
+function getProductPriceNumber(product: any) {
+  const value = product?.price ?? product?.Price_RM ?? product?.Final_Price_Low ?? product?.Initial_Price_Low;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function ProductSummaryModal({
+  product,
+  onClose,
+  onAnalyze,
+}: {
+  product: any | null;
+  onClose: () => void;
+  onAnalyze: (product: any) => void;
+}) {
+  if (!product) return null;
+
+  const name = getDisplayProductName(product);
+  const category = product.Category || product.category || "Uncategorized";
+  const price = getDisplayProductPrice(product);
+  const sales = product.Sales || product.sales || "N/A";
+  const rank = getDisplayProductRank(product);
+  const imageUrl = product.Image_URL || product.image_url;
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-slate-800 bg-[#0d1322] shadow-2xl shadow-black/40">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-800 p-5">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Product summary</p>
+            <h2 className="mt-2 text-xl font-bold leading-tight text-white">{name}</h2>
+          </div>
+          <button onClick={onClose} className="rounded-lg bg-black/20 p-2 text-slate-400 hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="grid gap-5 p-5 md:grid-cols-[220px_1fr]">
+          <div className="h-52 overflow-hidden rounded-lg border border-slate-800 bg-black/20">
+            {imageUrl ? (
+              <img src={imageUrl} alt={name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500">No image</div>
+            )}
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <SummaryMetric label="Category" value={String(category)} />
+              <SummaryMetric label="Rank" value={`#${rank}`} />
+              <SummaryMetric label="Price" value={`RM ${price}`} />
+              <SummaryMetric label="Sales" value={String(sales)} />
+            </div>
+            <p className="text-sm leading-6 text-slate-400">
+              This product is grouped under {category}. Use the full analysis view to inspect trend strength,
+              sourcing fit, margin assumptions, and marketplace links.
+            </p>
+            <button
+              onClick={() => onAnalyze(product)}
+              className="w-full rounded-lg bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+            >
+              Analyze product
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-800 bg-black/20 p-3">
+      <p className="text-[11px] text-slate-500">{label}</p>
+      <p className="mt-1 line-clamp-2 text-sm font-bold text-white">{value}</p>
+    </div>
+  );
 }

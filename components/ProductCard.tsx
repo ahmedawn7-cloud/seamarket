@@ -1,19 +1,25 @@
 "use client";
 
-import { ExternalLink, Eye, Heart, ImageOff, Star, TrendingUp } from "lucide-react";
+import { Eye, Heart, ImageOff } from "lucide-react";
 
 type ProductCardProps = {
   product: any;
   onResearch: (product: any) => void;
   onQuickView: (product: any) => void;
+  onPreview?: (product: any) => void;
 };
 
-export default function ProductCard({ product, onQuickView }: ProductCardProps) {
+export default function ProductCard({ product, onQuickView, onPreview }: ProductCardProps) {
   const details = normalizeProduct(product);
 
   return (
     <article className="group overflow-hidden rounded-xl border border-slate-800 bg-[#0d1322] shadow-xl shadow-black/20 transition hover:-translate-y-1 hover:border-cyan-400/60 hover:shadow-cyan-500/10">
-      <div className="relative h-48 bg-black/30">
+      <button
+        type="button"
+        onClick={() => onPreview?.(product)}
+        className="relative block h-48 w-full overflow-hidden bg-black/30 text-left"
+        aria-label={`Preview ${details.name}`}
+      >
         {details.imageUrl ? (
           <img
             src={details.imageUrl}
@@ -32,14 +38,10 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           Rank #{details.rank}
         </div>
 
-        <button className="absolute right-3 top-3 p-2 text-slate-300 transition hover:text-white hover:scale-110 drop-shadow-md">
+        <span className="absolute right-3 top-3 p-2 text-slate-300 transition group-hover:text-white drop-shadow-md">
           <Heart className="h-5 w-5" />
-        </button>
-        
-        <div className="absolute left-3 bottom-3 rounded-md bg-black/80 px-2 py-1 text-[10px] font-bold text-slate-200 backdrop-blur shadow-sm">
-          {details.platform}
-        </div>
-      </div>
+        </span>
+      </button>
 
       <div className="space-y-4 p-5">
         <div>

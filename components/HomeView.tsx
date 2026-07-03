@@ -78,16 +78,16 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
     <div className="space-y-20 pb-20">
       <section className="grid min-h-[calc(100vh-8rem)] items-center gap-8 py-8 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-7">
-          <div className="flex items-center gap-4">
-            <img src="/profit-pilot-logo.png" alt="Profit Pilot AI" className="h-20 w-20 object-contain" />
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
+          <div className="space-y-5">
+            <div className="inline-flex items-center gap-3 rounded-full border border-slate-800 bg-[#0d1322] px-4 py-2">
+              <img src="/profit-pilot-logo.png" alt="Profit Pilot AI" className="h-9 w-9 object-contain" />
+              <span className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
                 Profit Pilot AI
-              </p>
-              <h1 className="mt-2 max-w-3xl text-4xl font-bold tracking-tight text-white md:text-6xl">
-                Southeast Asia market intelligence for product operators.
-              </h1>
+              </span>
             </div>
+            <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white md:text-6xl">
+              Southeast Asia market intelligence for product operators.
+            </h1>
           </div>
 
           <p className="max-w-2xl text-base leading-7 text-slate-400">

@@ -10,7 +10,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 const OWNER_EMAIL = "ahmedawn7@gmail.com";
-const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+const configuredSiteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ||
+  process.env.NEXT_PUBLIC_VERCEL_URL;
+const fallbackProductionUrl = "https://seamarket-hb9cwh0jk-ahmedawn7-clouds-projects.vercel.app";
 
 export type AccessPlan = "guest" | "registered" | "pro";
 
@@ -23,9 +27,21 @@ export function getAccessPlan(session: Session | null, profilePlan?: string | nu
 }
 
 function getEmailRedirectUrl() {
-  if (configuredSiteUrl) return configuredSiteUrl;
+  if (configuredSiteUrl) {
+    return normalizeSiteUrl(configuredSiteUrl);
+  }
   if (typeof window === "undefined") return undefined;
+
+  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    return fallbackProductionUrl;
+  }
+
   return window.location.origin;
+}
+
+function normalizeSiteUrl(url: string) {
+  const trimmed = url.trim().replace(/\/$/, "");
+  return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
 }
 
 export default function AuthPanel({

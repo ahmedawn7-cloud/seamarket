@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Bell, Bot, Bookmark, Calculator, CalendarDays, CheckCircle2, Edit3, Send, Target } from "lucide-react";
+import { Bell, Bot, Bookmark, Calculator, CalendarDays, Edit3, FilePlus2, Send, Target } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
-export default function ResearchHub({ session }: { session: Session | null }) {
+export default function ResearchHub({ session, products = [] }: { session: Session | null; products?: any[] }) {
   const [buyCost, setBuyCost] = useState(18);
   const [sellPrice, setSellPrice] = useState(39);
   const [shipping, setShipping] = useState(4);
@@ -18,6 +18,7 @@ export default function ResearchHub({ session }: { session: Session | null }) {
   const [notes, setNotes] = useState("");
   const [savedProducts, setSavedProducts] = useState<any[]>([]);
   const [savedNotes, setSavedNotes] = useState<SavedNote[]>([]);
+  const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
   const [researchTasks, setResearchTasks] = useState<ResearchTask[]>([]);
   const [notesStatus, setNotesStatus] = useState("");
   const [messages, setMessages] = useState([
@@ -40,6 +41,7 @@ export default function ResearchHub({ session }: { session: Session | null }) {
     setSavedProducts(Array.isArray(workspace.savedProducts) ? workspace.savedProducts : []);
     setSavedNotes(Array.isArray(workspace.savedNotes) ? workspace.savedNotes : []);
     setResearchTasks(Array.isArray(workspace.researchTasks) ? workspace.researchTasks : []);
+    setActiveNoteId(workspace.activeNoteId ?? null);
   }, [session]);
 
   function persistWorkspace(nextWorkspace: Partial<ResearchWorkspace>) {
@@ -48,6 +50,7 @@ export default function ResearchHub({ session }: { session: Session | null }) {
       savedProducts,
       savedNotes,
       researchTasks,
+      activeNoteId,
       ...nextWorkspace,
     };
 
@@ -77,8 +80,23 @@ export default function ResearchHub({ session }: { session: Session | null }) {
     ].slice(0, 12);
 
     setSavedNotes(nextNotes);
-    persistWorkspace({ notes: content, savedNotes: nextNotes });
+    setActiveNoteId(nextNotes[0].id);
+    persistWorkspace({ notes: content, savedNotes: nextNotes, activeNoteId: nextNotes[0].id });
     setNotesStatus("Saved as a private research note.");
+  }
+
+  function startNewNote() {
+    setNotes("");
+    setActiveNoteId(null);
+    persistWorkspace({ notes: "", activeNoteId: null });
+    setNotesStatus("Started a new private note.");
+  }
+
+  function openSavedNote(note: SavedNote) {
+    setNotes(note.content);
+    setActiveNoteId(note.id);
+    persistWorkspace({ notes: note.content, activeNoteId: note.id });
+    setNotesStatus("Loaded saved note.");
   }
 
   function sendMessage() {
@@ -99,6 +117,8 @@ export default function ResearchHub({ session }: { session: Session | null }) {
         ].slice(0, 20)
       : researchTasks;
 
+    const productMatches = getProductMatches(text, products);
+
     if (detectedTask) {
       setResearchTasks(nextTasks);
       persistWorkspace({ researchTasks: nextTasks });
@@ -109,7 +129,9 @@ export default function ResearchHub({ session }: { session: Session | null }) {
       { role: "user", text },
       {
         role: "assistant",
-        text: detectedTask
+        text: productMatches.length > 0
+          ? buildProductResearchReply(productMatches, detectedTask?.label)
+          : detectedTask
           ? `Saved request: ${detectedTask.label}. I will keep this in your AI task queue so it can later trigger product monitoring, saved-product rules, or Telegram alerts once the automation layer is connected.`
           : "Research path: check sales velocity, review quality, supplier cost, shipping speed, and whether the product has a clear video demonstration angle. API-powered AI can be connected here later.",
       },
@@ -175,9 +197,16 @@ export default function ResearchHub({ session }: { session: Session | null }) {
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Edit3 className="h-5 w-5 text-cyan-300" />
-                <h2 className="text-lg font-bold text-white">Research Notes & Docs</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Research Notes & Docs</h2>
+                  <p className="text-xs text-slate-500">{activeNoteId ? "Editing saved note" : "New draft"}</p>
+                </div>
               </div>
               <div className="flex items-center gap-3">
+                <button onClick={startNewNote} className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-cyan-300 transition">
+                  <FilePlus2 className="h-4 w-4" />
+                  New
+                </button>
                 <button onClick={() => saveNotes()} className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition">Save Draft</button>
                 <button onClick={saveNoteSnapshot} className="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300">Save Note</button>
               </div>
@@ -198,8 +227,10 @@ export default function ResearchHub({ session }: { session: Session | null }) {
                 {savedNotes.slice(0, 3).map((note) => (
                   <button
                     key={note.id}
-                    onClick={() => setNotes(note.content)}
-                    className="block w-full rounded-lg border border-slate-800 bg-black/20 p-3 text-left transition hover:border-cyan-400/40"
+                    onClick={() => openSavedNote(note)}
+                    className={`block w-full rounded-lg border p-3 text-left transition hover:border-cyan-400/40 ${
+                      activeNoteId === note.id ? "border-cyan-400/40 bg-cyan-400/10" : "border-slate-800 bg-black/20"
+                    }`}
                   >
                     <p className="line-clamp-1 text-sm font-bold text-white">{note.title}</p>
                     <p className="mt-1 text-xs text-slate-500">{formatDate(note.savedAt)}</p>
@@ -466,4 +497,48 @@ type ResearchWorkspace = {
   savedProducts: any[];
   savedNotes: SavedNote[];
   researchTasks: ResearchTask[];
+  activeNoteId?: number | null;
 };
+
+function getProductMatches(prompt: string, products: any[]) {
+  const terms = extractTarget(prompt)
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((term) => term.length > 2);
+
+  if (terms.length === 0 || products.length === 0) return [];
+
+  return products
+    .map((product) => {
+      const searchable = [
+        getProductName(product),
+        product.Category,
+        product.category,
+        product.Brand,
+        product.brand,
+        product.Store_Name,
+        product.Product_Name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const score = terms.reduce((total, term) => total + (searchable.includes(term) ? 1 : 0), 0);
+      return { product, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((item) => item.product);
+}
+
+function buildProductResearchReply(matches: any[], taskLabel?: string) {
+  const lines = matches.map((product, index) => {
+    const name = getProductName(product);
+    const category = product.Category || product.category || "Uncategorized";
+    const price = product.Price_RM || product.Final_Price_Low || "N/A";
+    const sales = product.Sales || product.sales || "N/A";
+    return `${index + 1}. ${name} | ${category} | RM ${price} | Sales ${sales}`;
+  });
+
+  return `${taskLabel ? `Saved request: ${taskLabel}.\n\n` : ""}I found ${matches.length} matching in-house products from your Supabase dataset:\n${lines.join("\n")}\n\nUse these as your first research set before checking external suppliers or alerts.`;
+}
