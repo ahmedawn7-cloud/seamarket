@@ -199,6 +199,34 @@ export default function AuthPanel({
     setMessage("Passwordless login link sent. Check inbox, spam, and promotions.");
   }
 
+  async function signInWithGoogle() {
+    setStatus("loading");
+    setMessage("");
+    setNeedsConfirmation(false);
+
+    if (!supabase) {
+      setStatus("error");
+      setMessage("Supabase is not configured.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: getEmailRedirectUrl(),
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account",
+        },
+      },
+    });
+
+    if (error) {
+      setStatus("error");
+      setMessage(formatAuthError(error.message));
+    }
+  }
+
   function unlockLocalAdmin() {
     if (devPassword !== "1227") {
       setStatus("error");
@@ -245,6 +273,24 @@ export default function AuthPanel({
               {label}
             </button>
           ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={signInWithGoogle}
+          disabled={status === "loading"}
+          className="mb-5 inline-flex w-full items-center justify-center gap-3 rounded-lg border border-slate-700 bg-white px-5 py-3 font-bold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm font-black text-slate-950">
+            G
+          </span>
+          Continue with Google
+        </button>
+
+        <div className="mb-5 flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-slate-600">
+          <div className="h-px flex-1 bg-slate-800" />
+          or use email
+          <div className="h-px flex-1 bg-slate-800" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
