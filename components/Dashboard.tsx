@@ -187,7 +187,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   ];
 
   return (
-    <>
+    <div className={`theme-shell relative z-10 min-h-screen ${comfortTheme ? "comfort-theme" : "dark-theme"}`}>
       <div className="fixed inset-0 -z-10 bg-[var(--background)]">
         <div
           className={`absolute inset-0 ${
@@ -198,7 +198,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
         />
       </div>
 
-      <div className={`theme-shell relative z-10 flex min-h-screen flex-col ${comfortTheme ? "comfort-theme" : "dark-theme"}`}>
+      <div className="relative z-10 flex min-h-screen flex-col">
         <header className="sticky top-0 z-50 border-b backdrop-blur-xl">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex min-h-16 items-center justify-between gap-4 py-3">
@@ -482,7 +482,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
         onSessionChange={updateSession}
         onDevUnlock={() => setDevAdminUnlocked(true)}
       />
-    </>
+    </div>
   );
 }
 

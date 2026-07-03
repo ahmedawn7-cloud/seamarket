@@ -133,11 +133,10 @@ button {
   box-shadow: var(--shadow-card);
 }
 
-.theme-shell [class*="bg-[#070b16]"],
-.theme-shell [class*="bg-black/20"],
-.theme-shell [class*="bg-black/30"],
-.theme-shell [class*="bg-black/40"],
-.theme-shell [class*="bg-white/5"] {
+.theme-shell [class~="bg-[#070b16]"],
+.theme-shell [class~="bg-black/20"],
+.theme-shell [class~="bg-black/30"],
+.theme-shell [class~="bg-black/40"] {
   background-color: var(--muted) !important;
   border-color: var(--border) !important;
 }
@@ -182,17 +181,21 @@ button {
   color: var(--danger) !important;
 }
 
-.theme-shell [class*="bg-cyan-500"],
-.theme-shell [class*="bg-cyan-400"] {
+.theme-shell [class~="bg-cyan-500"],
+.theme-shell [class~="bg-cyan-400"] {
   background-color: var(--primary) !important;
   color: var(--primary-foreground) !important;
 }
 
-.theme-shell [class*="bg-cyan-500/10"],
-.theme-shell [class*="bg-cyan-400/10"],
-.theme-shell [class*="hover:bg-cyan-400/10"]:hover,
-.theme-shell [class*="hover:bg-cyan-500/20"]:hover {
+.theme-shell [class~="bg-cyan-500/10"],
+.theme-shell [class~="bg-cyan-400/10"] {
   background-color: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+}
+
+.theme-shell [class*="hover:bg-cyan-400/10"]:hover,
+.theme-shell [class*="hover:bg-cyan-500/20"]:hover,
+.theme-shell [class*="hover:bg-white/5"]:hover {
+  background-color: color-mix(in srgb, var(--primary) 9%, transparent) !important;
 }
 
 .theme-shell [class*="shadow-cyan"],
@@ -233,8 +236,15 @@ button {
   box-shadow: var(--shadow-card);
 }
 
-.comfort-theme [class*="bg-black"] {
+.comfort-theme [class~="bg-black"],
+.comfort-theme [class~="bg-black/20"],
+.comfort-theme [class~="bg-black/30"],
+.comfort-theme [class~="bg-black/40"] {
   background-color: var(--muted) !important;
+}
+
+.comfort-theme [class~="bg-white/5"] {
+  background-color: color-mix(in srgb, var(--card) 82%, var(--surface-soft)) !important;
 }
 
 .comfort-theme [class*="bg-slate-800"] {
@@ -252,10 +262,13 @@ button {
   box-shadow: var(--shadow-card) !important;
 }
 
-.dark-theme [class*="bg-black"] {
+.dark-theme [class~="bg-black"],
+.dark-theme [class~="bg-black/20"],
+.dark-theme [class~="bg-black/30"],
+.dark-theme [class~="bg-black/40"] {
   background-color: rgba(4, 10, 20, 0.44) !important;
 }
 
-.dark-theme [class*="bg-white/5"] {
+.dark-theme [class~="bg-white/5"] {
   background-color: rgba(255, 255, 255, 0.045) !important;
 }
