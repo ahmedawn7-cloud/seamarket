@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, Loader2, MessageSquareText, Minimize2, Send, Trash2, X } from "lucide-react";
 import ChatMessage from "@/components/chatbot/ChatMessage";
 import StarterPrompts from "@/components/chatbot/StarterPrompts";
-import { mockPasarAI } from "@/lib/chat/mockPasarAI";
+import { sendPasarAIMessage } from "@/lib/chat/chatClient";
 import type { ChatMessage as ChatMessageType, PasarAIAction } from "@/types/chat";
 
 const TRACKED_ITEMS_KEY = "profitpilot-pasar-ai-tracked-items";
@@ -27,11 +27,6 @@ export default function PasarAIWidget() {
   const [status, setStatus] = useState("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const latestAssistantId = useMemo(
-    () => [...messages].reverse().find((message) => message.role === "assistant")?.id,
-    [messages],
-  );
-
   useEffect(() => {
     if (isOpen && !isMinimized) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -49,14 +44,14 @@ export default function PasarAIWidget() {
       createdAt: Date.now(),
     };
 
-    setMessages((current) => [...current, userMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput("");
     setStatus("");
     setIsLoading(true);
 
     try {
-      await wait(450);
-      const response = await mockPasarAI(content);
+      const response = await sendPasarAIMessage(nextMessages);
       const assistantMessage: ChatMessageType = {
         id: createId("assistant"),
         role: "assistant",
@@ -68,14 +63,15 @@ export default function PasarAIWidget() {
       if (response.actions?.length) {
         setPendingActions((current) => ({ ...current, [assistantMessage.id]: response.actions ?? [] }));
       }
-    } catch {
+    } catch (error) {
       setMessages((current) => [
         ...current,
         {
           id: createId("assistant"),
           role: "assistant",
-          content:
-            "I could not process that request right now. Please try again with the product, category, price, or marketplace you want to analyze.\n\nAI insights are estimates only. Please verify before making business decisions.",
+          content: `${
+            error instanceof Error ? error.message : "Pasar AI request failed."
+          }\n\nPlease try again with the product, category, price, marketplace, supplier, or Malaysia compliance concern you want to analyze.\n\nAI insights are estimates only. Please verify before making business decisions.`,
           createdAt: Date.now(),
         },
       ]);
@@ -238,10 +234,6 @@ export default function PasarAIWidget() {
 
 function createId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function loadTrackedItems() {

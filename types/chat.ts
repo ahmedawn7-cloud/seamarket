@@ -17,3 +17,11 @@ export type PasarAIResponse = {
   content: string;
   actions?: PasarAIAction[];
 };
+
+export type ChatApiRequest = {
+  messages: ChatMessage[];
+};
+
+export type ChatApiResponse = {
+  reply: string;
+};
