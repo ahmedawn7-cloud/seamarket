@@ -57,14 +57,16 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
     };
   }, [session]);
 
-  function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAvatarPreview(typeof reader.result === "string" ? reader.result : null);
-    };
-    reader.readAsDataURL(file);
+
+    try {
+      const resized = await resizeImageForLocalProfile(file);
+      setAvatarPreview(resized);
+    } catch {
+      setSaveMessage("Could not prepare this image. Try a smaller JPG or PNG.");
+    }
   }
 
   async function saveProfile() {
@@ -226,7 +228,44 @@ function saveLocalProfile(profile: {
   avatarPreview: string | null;
 }) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(profile));
+  try {
+    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(profile));
+  } catch {
+    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify({ ...profile, avatarPreview: null }));
+  }
+}
+
+function resizeImageForLocalProfile(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("Image read failed."));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error("Image decode failed."));
+      image.onload = () => {
+        const maxSize = 320;
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+
+        if (!context) {
+          reject(new Error("Canvas unavailable."));
+          return;
+        }
+
+        context.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
+      };
+      image.src = String(reader.result || "");
+    };
+
+    reader.readAsDataURL(file);
+  });
 }
 
 function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {

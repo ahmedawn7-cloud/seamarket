@@ -10,6 +10,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const LOCAL_POSTS_KEY = "profitpilot-local-community-posts";
 const LOCAL_PROFILE_KEY = "profitpilot-local-profile";
+const MAX_LOCAL_POSTS = 20;
 
 const mockPosts: CommunityPost[] = [
   {
@@ -91,9 +92,13 @@ export default function CommunityHub({ session }: { session: Session | null }) {
     };
 
     setPosts((current) => [newPost, ...current]);
-    saveLocalPost(newPost);
+    const savedLocally = saveLocalPost(newPost);
     setPostText("");
-    setPostStatus("Posted and saved locally.");
+    setPostStatus(
+      savedLocally
+        ? "Posted and saved locally."
+        : "Posted for this session. Local browser storage is full, so older local posts were trimmed.",
+    );
 
     if (!supabase || !session?.user) return;
 
@@ -260,12 +265,14 @@ export default function CommunityHub({ session }: { session: Session | null }) {
   );
 }
 
-function loadLocalPosts() {
+function loadLocalPosts(): CommunityPost[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(LOCAL_POSTS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map(sanitizeLocalPost).filter(isCommunityPost) : [];
   } catch {
+    localStorage.removeItem(LOCAL_POSTS_KEY);
     return [];
   }
 }
@@ -297,21 +304,60 @@ function getCommunityName(session: Session | null, profile: LocalProfile | null)
   return profile?.displayName?.trim() || session?.user?.email?.split("@")[0] || "You";
 }
 
-function saveLocalPost(post: {
-  id: number;
-  isMine?: boolean;
-  author: string;
-  role: string;
-  avatarUrl?: string | null;
-  time: string;
-  content: string;
-  likes: number;
-  comments: number;
-  rating: number;
-}) {
-  if (typeof window === "undefined") return;
+function saveLocalPost(post: CommunityPost) {
+  if (typeof window === "undefined") return false;
   const existing = loadLocalPosts();
-  localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify([post, ...existing].slice(0, 50)));
+  const posts = [sanitizeLocalPost(post), ...existing].filter(Boolean) as CommunityPost[];
+
+  for (const limit of [MAX_LOCAL_POSTS, 10, 5, 1]) {
+    try {
+      localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(posts.slice(0, limit)));
+      return true;
+    } catch (error) {
+      if (!isStorageQuotaError(error)) {
+        return false;
+      }
+    }
+  }
+
+  try {
+    localStorage.removeItem(LOCAL_POSTS_KEY);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+
+  return false;
+}
+
+function sanitizeLocalPost(post: any): CommunityPost | null {
+  if (!post || typeof post !== "object") return null;
+
+  return {
+    id: Number(post.id) || Date.now(),
+    isMine: Boolean(post.isMine),
+    author: String(post.author || "You").slice(0, 80),
+    role: String(post.role || "Member").slice(0, 80),
+    avatarUrl: post.isMine ? null : typeof post.avatarUrl === "string" && !post.avatarUrl.startsWith("data:") ? post.avatarUrl : null,
+    time: String(post.time || "Just now").slice(0, 40),
+    content: String(post.content || "").slice(0, 1200),
+    likes: Number(post.likes) || 0,
+    comments: Number(post.comments) || 0,
+    rating: Number(post.rating) || 0,
+  };
+}
+
+function isCommunityPost(post: CommunityPost | null): post is CommunityPost {
+  return Boolean(post);
+}
+
+function isStorageQuotaError(error: unknown) {
+  return (
+    error instanceof DOMException &&
+    (error.name === "QuotaExceededError" ||
+      error.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+      error.code === 22 ||
+      error.code === 1014)
+  );
 }
 
 function Avatar({ author, avatarUrl, highlight = false }: { author: string; avatarUrl?: string | null; highlight?: boolean }) {
