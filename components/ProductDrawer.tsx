@@ -329,40 +329,25 @@ export default function ProductDrawer({
 
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="flex gap-4 border-b border-border pb-4 mb-4 text-sm text-muted-foreground">
-              <span className="text-cyan-400 border-b border-cyan-400 -mb-[17px] pb-4 font-medium">AI Insights</span>
-              <span>Supplier Intel</span>
-              <span>Competitor View</span>
-              <span>Listing Analyzer</span>
+              <span className="text-cyan-400 border-b border-cyan-400 -mb-[17px] pb-4 font-medium">Pasar AI Actions</span>
             </div>
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <div className="rounded-lg border border-border bg-muted p-3">
-                  <p className="text-xs text-muted-foreground">Opportunity Score</p>
-                  <p className="mt-1 text-2xl font-black text-emerald-400">8.4<span className="text-sm font-normal text-slate-500">/10</span></p>
-                </div>
-                <div className="rounded-lg border border-border bg-muted p-3">
-                  <p className="text-xs text-muted-foreground">Risk Level</p>
-                  <p className="mt-1 text-2xl font-black text-amber-400">Low</p>
-                </div>
-                <div className="rounded-lg border border-border bg-muted p-3">
-                  <p className="text-xs text-muted-foreground">Supplier Readiness</p>
-                  <p className="mt-1 text-2xl font-black text-foreground">92%</p>
-                </div>
-                <div className="rounded-lg border border-border bg-muted p-3">
-                  <p className="text-xs text-muted-foreground">Competition</p>
-                  <p className="mt-1 text-2xl font-black text-cyan-400">Med</p>
-                </div>
-              </div>
-              
-              <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-4">
-                <p className="text-sm font-bold text-emerald-400 mb-2">Verdict: SELL</p>
-                <p className="text-sm text-muted-foreground">Strong upward trend in sales over the past 2 weeks. Low competition with high demand. Profit margins estimated at 35%+ based on typical sourcing costs.</p>
-              </div>
-
-              <div className="flex gap-3 text-sm leading-6 text-muted-foreground">
-                <div className="mt-1 h-2 w-2 rounded-full bg-indigo-400 shrink-0" />
-                <p><strong className="text-foreground">Next Best Action:</strong> Bundle with adjacent accessories to increase AOV and dominate the current market gap.</p>
-              </div>
+            
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
+                 Analyze Product
+              </button>
+              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
+                 Explain Scores
+              </button>
+              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
+                 Marketing Ideas
+              </button>
+              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
+                 Generate Listing
+              </button>
+              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
+                 Compare Products
+              </button>
             </div>
           </div>
         </div>

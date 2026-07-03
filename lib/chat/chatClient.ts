@@ -7,7 +7,7 @@ export async function sendPasarAIMessage(messages: ChatMessage[], role: "main" |
   const timeout = window.setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
   try {
-    const response = await fetch("/api/chat", {
+    const response = await fetch("/api/ai/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages, role }),
@@ -20,14 +20,18 @@ export async function sendPasarAIMessage(messages: ChatMessage[], role: "main" |
       throw new Error(payload && "error" in payload && payload.error ? payload.error : "Pasar AI server error.");
     }
 
-    if (!payload || !("reply" in payload) || !payload.reply?.trim()) {
+    if (!payload || !("response" in payload) || !payload.response) {
       throw new Error("Pasar AI returned an empty reply.");
     }
 
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "";
 
     return {
-      content: payload.reply,
+      content: payload.response.answer,
+      intent: payload.intent,
+      confidence: payload.confidence,
+      sources: payload.response.sources,
+      recommendations: payload.response.recommendations,
       actions: detectTrackingActions(lastUserMessage),
     };
   } catch (error) {

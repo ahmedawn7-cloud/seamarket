@@ -185,6 +185,12 @@ export default function ResearchHub({
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Chat, compare, calculate margins, and build your product thesis before deciding what to source.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-400 transition hover:bg-cyan-500/20">Generate SWOT</button>
+          <button className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-400 transition hover:bg-cyan-500/20">Generate Launch Plan</button>
+          <button className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-400 transition hover:bg-cyan-500/20">Supplier Summary</button>
+          <button className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-bold text-cyan-400 transition hover:bg-cyan-500/20">Executive Summary</button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">

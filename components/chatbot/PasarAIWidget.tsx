@@ -63,6 +63,10 @@ export default function PasarAIWidget() {
         role: "assistant",
         content: response.content,
         createdAt: Date.now(),
+        intent: response.intent,
+        confidence: response.confidence,
+        sources: response.sources,
+        recommendations: response.recommendations
       };
 
       setMessages((current) => [...current, assistantMessage]);
