@@ -188,12 +188,18 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
 
   return (
     <>
-      <div className={`fixed inset-0 -z-10 ${comfortTheme ? "bg-[#eef7fb]" : "bg-[#050816]"}`}>
-        <div className={`absolute inset-0 ${comfortTheme ? "bg-[linear-gradient(180deg,#f8fdff_0%,#eef7fb_45%,#e7f0f5_100%)]" : "bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.18),transparent_30%),linear-gradient(180deg,#050816_0%,#08111f_45%,#050816_100%)]"}`} />
+      <div className="fixed inset-0 -z-10 bg-[var(--background)]">
+        <div
+          className={`absolute inset-0 ${
+            comfortTheme
+              ? "bg-[linear-gradient(180deg,#F6FAFC_0%,#EEF6F9_52%,#EAF3F7_100%)]"
+              : "bg-[radial-gradient(circle_at_top_left,rgba(0,200,240,0.12),transparent_32%),radial-gradient(circle_at_top_right,rgba(53,230,255,0.08),transparent_30%),linear-gradient(180deg,#050B16_0%,#071322_48%,#050B16_100%)]"
+          }`}
+        />
       </div>
 
-      <div className={`relative z-10 flex min-h-screen flex-col ${comfortTheme ? "comfort-theme" : ""}`}>
-        <header className="sticky top-0 z-50 border-b border-cyan-400/10 bg-[#070b16]/88 backdrop-blur-xl">
+      <div className={`theme-shell relative z-10 flex min-h-screen flex-col ${comfortTheme ? "comfort-theme" : "dark-theme"}`}>
+        <header className="sticky top-0 z-50 border-b backdrop-blur-xl">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex min-h-16 items-center justify-between gap-4 py-3">
               <button onClick={() => setActiveTab("Home")} className="flex shrink-0 items-center gap-3 text-left">
@@ -228,9 +234,9 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               <div className="hidden shrink-0 items-center gap-2 sm:flex">
                 <button
                   onClick={toggleComfortTheme}
-                  className="rounded-full border border-cyan-400/30 bg-transparent p-2 text-cyan-300 transition hover:bg-cyan-400/10"
+                  className="rounded-full border bg-transparent p-2 text-cyan-300 transition hover:bg-cyan-400/10"
                   aria-label="Toggle comfort theme"
-                  title="Toggle comfort theme"
+                  title={comfortTheme ? "Switch to dark intelligence theme" : "Switch to light comfort theme"}
                 >
                   <Sun className="h-4 w-4" />
                 </button>
