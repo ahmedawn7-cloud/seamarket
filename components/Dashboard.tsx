@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, TrendingUp, Truck, User, Users } from "lucide-react";
+import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, Sun, TrendingUp, Truck, User, Users } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import ProductDrawer from "@/components/ProductDrawer";
 import HomeView from "@/components/HomeView";
@@ -33,6 +33,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   const [profilePlan, setProfilePlan] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [devAdminUnlocked, setDevAdminUnlocked] = useState(false);
+  const [comfortTheme, setComfortTheme] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -116,6 +117,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     if (typeof window === "undefined") return;
     const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
     setDevAdminUnlocked(isLocalhost && localStorage.getItem("profitpilot-dev-admin") === "true");
+    setComfortTheme(localStorage.getItem("profitpilot-comfort-theme") === "true");
   }, []);
 
   const safeProducts = products;
@@ -167,6 +169,14 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     }
   }
 
+  function toggleComfortTheme() {
+    setComfortTheme((current) => {
+      const next = !current;
+      localStorage.setItem("profitpilot-comfort-theme", String(next));
+      return next;
+    });
+  }
+
   const tabs = [
     { id: "Home", icon: Home, label: "Home" },
     { id: "Products", icon: PackageSearch, label: "Products" },
@@ -178,11 +188,11 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
 
   return (
     <>
-      <div className="fixed inset-0 -z-10 bg-[#050816]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.18),transparent_30%),linear-gradient(180deg,#050816_0%,#08111f_45%,#050816_100%)]" />
+      <div className={`fixed inset-0 -z-10 ${comfortTheme ? "bg-[#eef7fb]" : "bg-[#050816]"}`}>
+        <div className={`absolute inset-0 ${comfortTheme ? "bg-[linear-gradient(180deg,#f8fdff_0%,#eef7fb_45%,#e7f0f5_100%)]" : "bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_34%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.18),transparent_30%),linear-gradient(180deg,#050816_0%,#08111f_45%,#050816_100%)]"}`} />
       </div>
 
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className={`relative z-10 flex min-h-screen flex-col ${comfortTheme ? "comfort-theme" : ""}`}>
         <header className="sticky top-0 z-50 border-b border-cyan-400/10 bg-[#070b16]/88 backdrop-blur-xl">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex min-h-16 items-center justify-between gap-4 py-3">
@@ -216,6 +226,14 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               </nav>
 
               <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                <button
+                  onClick={toggleComfortTheme}
+                  className="rounded-full border border-cyan-400/30 bg-transparent p-2 text-cyan-300 transition hover:bg-cyan-400/10"
+                  aria-label="Toggle comfort theme"
+                  title="Toggle comfort theme"
+                >
+                  <Sun className="h-4 w-4" />
+                </button>
                 {session?.user || devAdminUnlocked ? (
                   <>
                     <button
@@ -398,7 +416,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               description="Create a free account to save research notes, use the AI research workspace, and build product validation workflows."
               onLogin={() => setIsAuthOpen(true)}
             >
-              <ResearchHub />
+              <ResearchHub session={session} />
             </AccessGate>
           )}
           {activeTab === "Sourcing" && (
@@ -445,6 +463,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
 
       <ProductDrawer
         product={drawerProduct}
+        session={session}
         onClose={() => setDrawerProduct(null)}
         onResearch={() => {
           setDrawerProduct(null);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import {
   Activity,
@@ -24,10 +25,12 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
 
 export default function ProductDrawer({
   product,
+  session,
   onClose,
   onResearch,
 }: {
   product: any;
+  session?: Session | null;
   onClose: () => void;
   onResearch?: (product: any) => void;
 }) {
@@ -41,10 +44,11 @@ export default function ProductDrawer({
   async function saveToWatchlist() {
     setSaveStatus("saving");
     setMessage("");
+    saveLocalProduct(product, session);
 
     if (!supabase) {
-      setSaveStatus("error");
-      setMessage("Supabase is not configured.");
+      setSaveStatus("saved");
+      setMessage("Saved locally to your research workspace.");
       return;
     }
 
@@ -53,8 +57,8 @@ export default function ProductDrawer({
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setSaveStatus("error");
-      setMessage("Login is required before saved research can sync to your account.");
+      setSaveStatus("saved");
+      setMessage("Saved locally. Login is required for cloud sync.");
       return;
     }
 
@@ -65,8 +69,8 @@ export default function ProductDrawer({
     });
 
     if (error) {
-      setSaveStatus("error");
-      setMessage(error.message);
+      setSaveStatus("saved");
+      setMessage(`Saved locally. Cloud sync needs user_watchlist setup: ${error.message}`);
       return;
     }
 
@@ -290,6 +294,24 @@ function normalizeProduct(product: any) {
     shipping: String(product?.shipping_location ?? product?.Shipping_Location ?? "Unknown"),
     variants: String(product?.variant_count ?? product?.Variant_Count ?? "N/A"),
   };
+}
+
+function getResearchStorageKey(session?: Session | null) {
+  return `profitpilot-research-${session?.user?.email?.toLowerCase() || "local"}`;
+}
+
+function saveLocalProduct(product: any, session?: Session | null) {
+  if (typeof window === "undefined") return;
+  const key = getResearchStorageKey(session);
+  const raw = localStorage.getItem(key);
+  const current = raw ? JSON.parse(raw) : { notes: "", savedProducts: [] };
+  const id = String(product?.id || product?.Product_URL || product?.Product_Name || product?.Clean_Name_AI || Date.now());
+  const savedProducts = Array.isArray(current.savedProducts) ? current.savedProducts : [];
+  const nextProducts = [product, ...savedProducts.filter((item: any) => {
+    const itemId = String(item?.id || item?.Product_URL || item?.Product_Name || item?.Clean_Name_AI || "");
+    return itemId !== id;
+  })].slice(0, 50);
+  localStorage.setItem(key, JSON.stringify({ ...current, savedProducts: nextProducts }));
 }
 
 function formatCurrency(value: any) {

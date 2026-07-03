@@ -30,3 +30,56 @@ textarea,
 select {
   font: inherit;
 }
+
+.comfort-theme {
+  color: #172033;
+}
+
+.comfort-theme header,
+.comfort-theme footer,
+.comfort-theme aside,
+.comfort-theme [class*="bg-[#0d1322]"],
+.comfort-theme [class*="bg-[#070b16]"],
+.comfort-theme [class*="bg-[#101827]"],
+.comfort-theme [class*="bg-[#111827]"],
+.comfort-theme [class*="bg-black/20"],
+.comfort-theme [class*="bg-black/30"],
+.comfort-theme [class*="bg-black/40"] {
+  background-color: #f8fdff !important;
+  color: #172033 !important;
+}
+
+.comfort-theme [class*="text-white"],
+.comfort-theme [class*="text-slate-100"],
+.comfort-theme [class*="text-slate-200"],
+.comfort-theme [class*="text-slate-300"] {
+  color: #0f172a !important;
+}
+
+.comfort-theme [class*="text-slate-400"],
+.comfort-theme [class*="text-slate-500"],
+.comfort-theme [class*="text-slate-600"] {
+  color: #526173 !important;
+}
+
+.comfort-theme [class*="border-slate-800"],
+.comfort-theme [class*="border-slate-700"] {
+  border-color: #cbd9e5 !important;
+}
+
+.comfort-theme input,
+.comfort-theme textarea,
+.comfort-theme select {
+  background-color: #ffffff !important;
+  color: #172033 !important;
+  border-color: #b8c7d6 !important;
+}
+
+.comfort-theme input::placeholder,
+.comfort-theme textarea::placeholder {
+  color: #6b7a90 !important;
+}
+
+.comfort-theme [class*="shadow-black"] {
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12) !important;
+}

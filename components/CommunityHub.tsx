@@ -58,6 +58,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
   const [posts, setPosts] = useState<CommunityPost[]>(mockPosts);
   const [postStatus, setPostStatus] = useState("");
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<CommunityPost | null>(null);
 
   useEffect(() => {
     const profile = loadLocalProfile();
@@ -159,11 +160,13 @@ export default function CommunityHub({ session }: { session: Session | null }) {
               <article key={post.id} className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <Avatar author={post.author} avatarUrl={post.avatarUrl || null} />
-                    <div>
+                    <button onClick={() => setSelectedProfile(post)} className="text-left">
+                      <Avatar author={post.author} avatarUrl={post.avatarUrl || null} />
+                    </button>
+                    <button onClick={() => setSelectedProfile(post)} className="text-left">
                       <p className="text-sm font-bold text-white">{post.author} <span className="text-xs font-normal text-cyan-400 ml-2">{post.role}</span></p>
                       <p className="text-xs text-slate-500">{post.time}</p>
-                    </div>
+                    </button>
                   </div>
                   <button className="text-slate-500 hover:text-white">
                     <MoreHorizontal className="h-5 w-5" />
@@ -225,6 +228,34 @@ export default function CommunityHub({ session }: { session: Session | null }) {
           </div>
         </div>
       </div>
+      {selectedProfile && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-slate-800 bg-[#0d1322] p-6 shadow-2xl shadow-black/40">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <Avatar author={selectedProfile.author} avatarUrl={selectedProfile.avatarUrl || null} />
+                <div>
+                  <h2 className="text-xl font-bold text-white">{selectedProfile.author}</h2>
+                  <p className="text-sm text-cyan-300">{selectedProfile.role}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedProfile(null)} className="text-slate-500 hover:text-white">
+                Close
+              </button>
+            </div>
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              <ProfileStat label="Posts" value={selectedProfile.isMine ? "Local" : "Public"} />
+              <ProfileStat label="Likes" value={String(selectedProfile.likes)} />
+              <ProfileStat label="Comments" value={String(selectedProfile.comments)} />
+            </div>
+            <p className="mt-5 text-sm leading-6 text-slate-400">
+              {selectedProfile.isMine
+                ? "This is your local community profile. It uses the photo and details saved in User Dashboard."
+                : "Public seller profile preview. Full user pages can be connected once Supabase profile tables are active."}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -295,6 +326,15 @@ function Avatar({ author, avatarUrl, highlight = false }: { author: string; avat
       ) : (
         author.charAt(0).toUpperCase()
       )}
+    </div>
+  );
+}
+
+function ProfileStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-800 bg-black/20 p-3 text-center">
+      <p className="text-lg font-bold text-white">{value}</p>
+      <p className="mt-1 text-xs text-slate-500">{label}</p>
     </div>
   );
 }

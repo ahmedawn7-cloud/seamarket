@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { Bot, Bookmark, Calculator, CalendarDays, Edit3, MessageSquare, Scale, Send, Target, TrendingUp } from "lucide-react";
 
@@ -8,13 +9,15 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
-export default function ResearchHub() {
+export default function ResearchHub({ session }: { session: Session | null }) {
   const [buyCost, setBuyCost] = useState(18);
   const [sellPrice, setSellPrice] = useState(39);
   const [shipping, setShipping] = useState(4);
   const [platformFee, setPlatformFee] = useState(8);
   const [chatInput, setChatInput] = useState("");
   const [notes, setNotes] = useState("");
+  const [savedProducts, setSavedProducts] = useState<any[]>([]);
+  const [notesStatus, setNotesStatus] = useState("");
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -28,6 +31,17 @@ export default function ResearchHub() {
     const margin = sellPrice > 0 ? (profit / sellPrice) * 100 : 0;
     return { fee, profit, margin };
   }, [buyCost, sellPrice, shipping, platformFee]);
+
+  useEffect(() => {
+    const workspace = loadResearchWorkspace(session);
+    setNotes(workspace.notes || "");
+    setSavedProducts(Array.isArray(workspace.savedProducts) ? workspace.savedProducts : []);
+  }, [session]);
+
+  function saveNotes(nextNotes = notes) {
+    saveResearchWorkspace(session, { notes: nextNotes, savedProducts });
+    setNotesStatus("Saved to your research workspace.");
+  }
 
   function sendMessage() {
     const text = chatInput.trim();
@@ -104,17 +118,44 @@ export default function ResearchHub() {
                 <Edit3 className="h-5 w-5 text-cyan-300" />
                 <h2 className="text-lg font-bold text-white">Research Notes & Docs</h2>
               </div>
-              <button className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition">Save Notes</button>
+              <button onClick={() => saveNotes()} className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition">Save Notes</button>
             </div>
             <textarea 
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                saveNotes(e.target.value);
+              }}
               placeholder="Jot down your product thesis, supplier links, and cost estimates here..."
               className="w-full flex-1 resize-none rounded-lg border border-slate-800 bg-[#070b16] p-4 text-sm leading-6 text-slate-300 outline-none focus:border-cyan-400/50 transition"
             />
+            {notesStatus && <p className="mt-3 text-xs text-cyan-300">{notesStatus}</p>}
           </div>
         </div>
       </div>
+
+      <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <Bookmark className="h-5 w-5 text-cyan-300" />
+          <h2 className="text-xl font-bold text-white">Saved Products for Research</h2>
+        </div>
+        {savedProducts.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-3">
+            {savedProducts.slice(0, 6).map((product, index) => (
+              <div key={`${getProductName(product)}-${index}`} className="rounded-lg border border-slate-800 bg-black/20 p-4">
+                <p className="line-clamp-2 text-sm font-bold text-white">{getProductName(product)}</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {product.Category || "Uncategorized"} / RM {product.Price_RM || product.Final_Price_Low || "N/A"}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400">
+            No saved products yet. Open any product and click Save Product to preload it here.
+          </p>
+        )}
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
@@ -212,4 +253,29 @@ function Metric({ label, value, highlight = "text-white" }: { label: string; val
       <span className={`font-bold ${highlight}`}>{value}</span>
     </div>
   );
+}
+
+function getResearchStorageKey(session: Session | null) {
+  return `profitpilot-research-${session?.user?.email?.toLowerCase() || "local"}`;
+}
+
+function loadResearchWorkspace(session: Session | null) {
+  if (typeof window === "undefined") return { notes: "", savedProducts: [] };
+  try {
+    const raw = localStorage.getItem(getResearchStorageKey(session));
+    return raw ? JSON.parse(raw) : { notes: "", savedProducts: [] };
+  } catch {
+    return { notes: "", savedProducts: [] };
+  }
+}
+
+function saveResearchWorkspace(session: Session | null, workspace: { notes: string; savedProducts: any[] }) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(getResearchStorageKey(session), JSON.stringify(workspace));
+}
+
+function getProductName(product: any) {
+  const clean = product?.Clean_Name_AI || product?.clean_name_ai;
+  if (clean && clean !== "The language entered is not supported at this time.") return clean;
+  return product?.Product_Name || product?.product_name || "Unknown product";
 }
