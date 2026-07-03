@@ -1,4 +1,5 @@
 import { OpsHeader, OpsList, OpsMetric, OpsPanel, StatusPill } from "@/components/ops/OpsPrimitives";
+import BotControlPanel from "@/components/ops/BotControlPanel";
 
 export default function ScraperOpsPage() {
   return (
@@ -53,6 +54,8 @@ export default function ScraperOpsPage() {
           ]}
         />
       </OpsPanel>
+
+      <BotControlPanel botName="Bot Scraper" mode="scraper" defaultSource="scraped_products_staging" />
     </section>
   );
 }

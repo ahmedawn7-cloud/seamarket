@@ -1,4 +1,5 @@
 import { OpsHeader, OpsList, OpsMetric, OpsPanel } from "@/components/ops/OpsPrimitives";
+import BotControlPanel from "@/components/ops/BotControlPanel";
 
 export default function CleanerBotOpsPage() {
   return (
@@ -40,6 +41,8 @@ export default function CleanerBotOpsPage() {
           />
         </OpsPanel>
       </div>
+
+      <BotControlPanel botName="Bot Cleaner" mode="cleaner" defaultSource="scraped_products_staging" />
     </section>
   );
 }

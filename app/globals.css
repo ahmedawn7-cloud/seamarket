@@ -272,3 +272,76 @@ button {
 .dark-theme [class~="bg-white/5"] {
   background-color: rgba(255, 255, 255, 0.045) !important;
 }
+
+.ops-shell {
+  --background: #03070d;
+  --foreground: #d7f9e8;
+  --card: #07110f;
+  --card-foreground: #d7f9e8;
+  --muted: #0b1915;
+  --muted-foreground: #8aa99b;
+  --border: #17342b;
+  --input: #050c0b;
+  --primary: #2cf38d;
+  --primary-foreground: #02100a;
+  --secondary: #0b241c;
+  --accent: #36d6ff;
+  --accent-foreground: #03131a;
+  --success: #2cf38d;
+  --warning: #f3c969;
+  --danger: #ff5a6f;
+  --ring: rgba(44, 243, 141, 0.26);
+  --nav: rgba(3, 8, 13, 0.96);
+}
+
+.ops-shell .ops-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid #1d4035;
+  background: #020812;
+  padding: 0.75rem 0.875rem;
+  color: #d7f9e8;
+  outline: none;
+}
+
+.ops-shell .ops-input:focus {
+  border-color: #2cf38d;
+  box-shadow: 0 0 0 3px rgba(44, 243, 141, 0.18);
+}
+
+.ops-shell .ops-action,
+.ops-shell .ops-action-secondary,
+.ops-shell .ops-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.8rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  transition: opacity 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.ops-shell .ops-action {
+  background: #2cf38d;
+  color: #02100a;
+}
+
+.ops-shell .ops-action-secondary {
+  border: 1px solid #1d4035;
+  background: #07110f;
+  color: #8df7bd;
+}
+
+.ops-shell .ops-danger {
+  width: 100%;
+  border: 1px solid rgba(255, 90, 111, 0.42);
+  background: rgba(255, 90, 111, 0.12);
+  color: #ff9aa8;
+}
+
+.ops-shell button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}

@@ -1,4 +1,5 @@
 import { OpsHeader, OpsList, OpsMetric, OpsPanel, StatusPill } from "@/components/ops/OpsPrimitives";
+import BotControlPanel from "@/components/ops/BotControlPanel";
 
 export default function ResearchBotOpsPage() {
   const hasGroq = Boolean(process.env.GROQ_API_KEY);
@@ -43,6 +44,8 @@ export default function ResearchBotOpsPage() {
           </div>
         </OpsPanel>
       </div>
+
+      <BotControlPanel botName="Research Bot" mode="research" defaultSource="MYProductScout_Master" />
     </section>
   );
 }

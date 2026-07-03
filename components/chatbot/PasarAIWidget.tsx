@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Bot, Loader2, MessageSquareText, Minimize2, Send, Trash2, X } from "lucide-react";
 import ChatMessage from "@/components/chatbot/ChatMessage";
 import StarterPrompts from "@/components/chatbot/StarterPrompts";
@@ -18,6 +19,7 @@ const welcomeMessage: ChatMessageType = {
 };
 
 export default function PasarAIWidget() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState("");
@@ -32,6 +34,10 @@ export default function PasarAIWidget() {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [messages, isOpen, isMinimized]);
+
+  if (pathname?.startsWith("/ops")) {
+    return null;
+  }
 
   async function sendMessage(text = input) {
     const content = text.trim();
