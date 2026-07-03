@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Loader2, ShieldCheck, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -85,6 +85,7 @@ export default function AuthPanel({
             email: normalizedEmail,
             password,
             options: {
+              emailRedirectTo: getEmailRedirectUrl(),
               data: {
                 display_name: displayName.trim(),
                 business_type: businessType,
@@ -111,39 +112,6 @@ export default function AuthPanel({
 
     setStatus("success");
     setMessage("Check your email to confirm your account, then sign in.");
-  }
-
-  async function handleMagicLink() {
-    setStatus("loading");
-    setMessage("");
-
-    if (!supabase) {
-      setStatus("error");
-      setMessage("Supabase is not configured.");
-      return;
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: getEmailRedirectUrl(),
-      },
-    });
-
-    if (error) {
-      setStatus("error");
-      setMessage(error.message);
-      return;
-    }
-
-    setStatus("success");
-    setMessage(
-      normalizedEmail === OWNER_EMAIL
-        ? "Owner access link sent. After confirming by email, this account receives Pro access."
-        : "Passwordless sign-in link sent. Check your email.",
-    );
   }
 
   return (
@@ -220,15 +188,10 @@ export default function AuthPanel({
             {mode === "signup" ? "Create account" : "Sign in"}
           </button>
 
-          <button
-            type="button"
-            onClick={handleMagicLink}
-            disabled={status === "loading" || !email.trim()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-white/5 px-5 py-3 font-bold text-white transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Send passwordless email link
-          </button>
+          <p className="rounded-lg border border-slate-800 bg-black/20 p-3 text-xs leading-5 text-slate-400">
+            Passwordless email links are temporarily disabled during setup to avoid Supabase email rate limits.
+            Use email and password registration for now.
+          </p>
         </form>
 
         <p className="mt-5 text-xs leading-5 text-slate-500">
