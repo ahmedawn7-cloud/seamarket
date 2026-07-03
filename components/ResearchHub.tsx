@@ -41,6 +41,7 @@ export default function ResearchHub({
   const [chatInput, setChatInput] = useState("");
   const [notes, setNotes] = useState("");
   const [savedProducts, setSavedProducts] = useState<any[]>([]);
+  const [savedCommunityPosts, setSavedCommunityPosts] = useState<SavedCommunityPost[]>([]);
   const [savedNotes, setSavedNotes] = useState<SavedNote[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
   const [researchTasks, setResearchTasks] = useState<ResearchTask[]>([]);
@@ -58,6 +59,7 @@ export default function ResearchHub({
     const workspace = loadResearchWorkspace(session);
     setNotes(workspace.notes || "");
     setSavedProducts(Array.isArray(workspace.savedProducts) ? workspace.savedProducts : []);
+    setSavedCommunityPosts(Array.isArray(workspace.savedCommunityPosts) ? workspace.savedCommunityPosts : []);
     setSavedNotes(Array.isArray(workspace.savedNotes) ? workspace.savedNotes : []);
     setResearchTasks(Array.isArray(workspace.researchTasks) ? workspace.researchTasks : []);
     setActiveNoteId(workspace.activeNoteId ?? null);
@@ -67,6 +69,7 @@ export default function ResearchHub({
     const workspace = {
       notes,
       savedProducts,
+      savedCommunityPosts,
       savedNotes,
       researchTasks,
       activeNoteId,
@@ -380,6 +383,34 @@ export default function ResearchHub({
       <section className="rounded-xl border border-border bg-card p-6">
         <div className="mb-5 flex items-center gap-3">
           <Bookmark className="h-5 w-5 text-cyan-300" />
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Saved Community Posts</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Community insights you saved for product research.</p>
+          </div>
+        </div>
+        {savedCommunityPosts.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {savedCommunityPosts.slice(0, 6).map((post) => (
+              <div key={post.id} className="rounded-lg border border-border bg-muted/50 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-foreground">{post.author}</p>
+                  <span className="rounded-full bg-cyan-400/10 px-2 py-1 text-[10px] font-bold text-cyan-300">{post.source}</span>
+                </div>
+                <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{post.content}</p>
+                <p className="mt-3 text-[11px] text-slate-500">{formatDate(post.savedAt)}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border bg-muted/50 p-5 text-sm text-muted-foreground">
+            Saved community posts will appear here when you click Save on a community discussion.
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-border bg-card p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <Bookmark className="h-5 w-5 text-cyan-300" />
           <h2 className="text-xl font-bold text-foreground">Saved Products for Research</h2>
         </div>
         {savedProducts.length > 0 ? (
@@ -602,9 +633,19 @@ type ResearchTask = {
 type ResearchWorkspace = {
   notes: string;
   savedProducts: any[];
+  savedCommunityPosts: SavedCommunityPost[];
   savedNotes: SavedNote[];
   researchTasks: ResearchTask[];
   activeNoteId?: number | null;
+};
+
+type SavedCommunityPost = {
+  id: string;
+  author: string;
+  role: string;
+  content: string;
+  savedAt: string;
+  source: string;
 };
 
 function getProductMatches(prompt: string, products: any[]) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Bell, Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Star, Users } from "lucide-react";
+import { Bell, Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Share2, Star, Trash2, Users } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -12,6 +12,7 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
 const LOCAL_POSTS_KEY = "profitpilot-local-community-posts";
 const LOCAL_PROFILE_KEY = "profitpilot-local-profile";
 const TELEGRAM_SETTINGS_KEY = "profitpilot-telegram-settings";
+const LOCAL_COMMUNITY_ACTIONS_KEY = "profitpilot-community-actions";
 const MAX_LOCAL_POSTS = 20;
 
 const mockPosts: CommunityPost[] = [
@@ -66,35 +67,40 @@ export default function CommunityHub({ session }: { session: Session | null }) {
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<CommunityPost | null>(null);
   const [sharedStatus, setSharedStatus] = useState("");
+  const [commentPostId, setCommentPostId] = useState<string | number | null>(null);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [actions, setActions] = useState<CommunityActions>(() => loadCommunityActions());
 
   useEffect(() => {
     const profile = loadLocalProfile();
     const telegram = loadTelegramSettings();
     setLocalProfile(profile);
     setTelegramChatId(telegram.chatId || "");
+    setActions(loadCommunityActions());
 
     const localPosts = loadLocalPosts();
     setPosts(mergePosts([], hydrateLocalPosts(localPosts, profile), mockPosts));
-    loadSharedPosts(profile, localPosts);
+    loadSharedPosts(profile);
   }, [session?.user?.id]);
 
-  async function loadSharedPosts(profile = localProfile, localPosts = loadLocalPosts()) {
+  async function loadSharedPosts(profile = localProfile) {
     try {
       const response = await fetch("/api/community/posts", { cache: "no-store" });
       const payload = await response.json();
+      const latestLocalPosts = loadLocalPosts();
 
       if (!payload.ok) {
         setSharedStatus(`Cloud community is not ready yet: ${payload.error}`);
-        setPosts(mergePosts([], hydrateLocalPosts(localPosts, profile), mockPosts));
+        setPosts(mergePosts([], hydrateLocalPosts(latestLocalPosts, profile), mockPosts));
         return;
       }
 
       const cloudPosts = Array.isArray(payload.posts) ? payload.posts.map((post: any) => normalizeCloudPost(post, session?.user?.id)) : [];
-      setPosts(mergePosts(cloudPosts, hydrateLocalPosts(localPosts, profile), mockPosts));
+      setPosts(mergePosts(cloudPosts, hydrateLocalPosts(latestLocalPosts, profile), mockPosts));
       setSharedStatus(cloudPosts.length > 0 ? "Showing shared Supabase community posts." : "No shared posts yet. Be the first to post.");
     } catch (error) {
       setSharedStatus(error instanceof Error ? `Community sync failed: ${error.message}` : "Community sync failed.");
-      setPosts(mergePosts([], hydrateLocalPosts(localPosts, profile), mockPosts));
+      setPosts(mergePosts([], hydrateLocalPosts(loadLocalPosts(), profile), mockPosts));
     }
   }
 
@@ -143,6 +149,112 @@ export default function CommunityHub({ session }: { session: Session | null }) {
 
     if (!error) {
       loadSharedPosts(localProfile);
+    }
+  }
+
+  function updateActions(updater: (current: CommunityActions) => CommunityActions) {
+    setActions((current) => {
+      const next = updater(current);
+      saveCommunityActions(next);
+      return next;
+    });
+  }
+
+  function toggleLike(post: CommunityPost) {
+    const postId = String(post.id);
+
+    updateActions((current) => {
+      const likedPostIds = new Set(current.likedPostIds);
+      if (likedPostIds.has(postId)) {
+        likedPostIds.delete(postId);
+      } else {
+        likedPostIds.add(postId);
+      }
+      return { ...current, likedPostIds: Array.from(likedPostIds) };
+    });
+  }
+
+  function addComment(post: CommunityPost) {
+    const postId = String(post.id);
+    const body = (commentDrafts[postId] || "").trim();
+    if (!body) return;
+
+    updateActions((current) => ({
+      ...current,
+      commentsByPost: {
+        ...current.commentsByPost,
+        [postId]: [
+          ...(current.commentsByPost[postId] || []),
+          {
+            id: Date.now(),
+            author: getCommunityName(session, localProfile),
+            body,
+            createdAt: new Date().toISOString(),
+          },
+        ].slice(-20),
+      },
+    }));
+    setCommentDrafts((current) => ({ ...current, [postId]: "" }));
+    setCommentPostId(postId);
+    setPostStatus("Comment added.");
+  }
+
+  function saveCommunityPostToResearch(post: CommunityPost) {
+    const postId = String(post.id);
+    const researchKey = getResearchStorageKey(session);
+    const workspace = loadResearchWorkspace(researchKey);
+    const savedCommunityPosts = Array.isArray(workspace.savedCommunityPosts) ? workspace.savedCommunityPosts : [];
+    const nextPosts = [
+      {
+        id: postId,
+        author: post.author,
+        role: post.role,
+        content: post.content,
+        savedAt: new Date().toISOString(),
+        source: "Community Hub",
+      },
+      ...savedCommunityPosts.filter((item: SavedCommunityPost) => String(item.id) !== postId),
+    ].slice(0, 30);
+
+    saveResearchWorkspace(researchKey, { ...workspace, savedCommunityPosts: nextPosts });
+    updateActions((current) => ({
+      ...current,
+      savedPostIds: Array.from(new Set([...current.savedPostIds, postId])),
+    }));
+    setPostStatus("Saved to Research Hub.");
+  }
+
+  function sharePost(post: CommunityPost) {
+    const text = `${post.author} on Profit Pilot AI:\n${post.content}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      navigator.share({ title: "Profit Pilot AI community post", text }).catch(() => undefined);
+      return;
+    }
+
+    navigator.clipboard?.writeText(text).catch(() => undefined);
+    setPostStatus("Post copied for sharing.");
+  }
+
+  async function deletePost(post: CommunityPost) {
+    if (!post.isMine) {
+      setPostStatus("You can only delete your own posts.");
+      return;
+    }
+
+    setPosts((current) => current.filter((item) => String(item.id) !== String(post.id)));
+    removeLocalPost(post.id);
+    setPostStatus("Post deleted.");
+
+    if (!supabase || !session?.user || !post.userId) return;
+
+    const { error } = await supabase
+      .from("community_posts")
+      .delete()
+      .eq("id", post.id)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      setPostStatus(`Deleted locally. Cloud delete failed: ${error.message}`);
     }
   }
 
@@ -237,7 +349,15 @@ export default function CommunityHub({ session }: { session: Session | null }) {
           </section>
 
           <div className="space-y-4">
-            {posts.map((post) => (
+            {posts.map((post) => {
+              const postId = String(post.id);
+              const localComments = actions.commentsByPost[postId] || [];
+              const isLiked = actions.likedPostIds.includes(postId);
+              const isSaved = actions.savedPostIds.includes(postId);
+              const shownLikes = post.likes + (isLiked ? 1 : 0);
+              const shownComments = post.comments + localComments.length;
+
+              return (
               <article key={post.id} className="rounded-xl border border-border bg-card p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -249,9 +369,20 @@ export default function CommunityHub({ session }: { session: Session | null }) {
                       <p className="text-xs text-slate-500">{post.time}</p>
                     </button>
                   </div>
-                  <button className="text-slate-500 hover:text-foreground">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {post.isMine && (
+                      <button
+                        onClick={() => deletePost(post)}
+                        className="rounded-full p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-300"
+                        aria-label="Delete post"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button onClick={() => setSelectedProfile(post)} className="rounded-full p-2 text-slate-500 transition hover:bg-muted hover:text-foreground" aria-label="Post options">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-4 text-sm leading-6 text-muted-foreground whitespace-pre-line">
@@ -273,20 +404,56 @@ export default function CommunityHub({ session }: { session: Session | null }) {
                   </div>
                 )}
 
-                <div className="mt-5 flex items-center gap-6 border-t border-border pt-4 text-sm text-muted-foreground">
-                  <button className="flex items-center gap-2 transition hover:text-cyan-400">
-                    <Heart className="h-4 w-4" /> {post.likes}
+                <div className="mt-5 flex flex-wrap items-center gap-5 border-t border-border pt-4 text-sm text-muted-foreground">
+                  <button onClick={() => toggleLike(post)} className={`flex items-center gap-2 transition hover:text-cyan-400 ${isLiked ? "text-cyan-300" : ""}`}>
+                    <Heart className={`h-4 w-4 ${isLiked ? "fill-cyan-300" : ""}`} /> {shownLikes}
                   </button>
-                  <button className="flex items-center gap-2 transition hover:text-foreground">
-                    <MessageCircle className="h-4 w-4" /> {post.comments} Comments
+                  <button onClick={() => setCommentPostId(commentPostId === postId ? null : postId)} className="flex items-center gap-2 transition hover:text-foreground">
+                    <MessageCircle className="h-4 w-4" /> {shownComments} Comments
+                  </button>
+                  <button onClick={() => sharePost(post)} className="flex items-center gap-2 transition hover:text-foreground">
+                    <Share2 className="h-4 w-4" /> Share
                   </button>
                   <div className="flex-1"></div>
-                  <button className="flex items-center gap-2 transition hover:text-emerald-400">
-                    <Bookmark className="h-4 w-4" /> Save
+                  <button onClick={() => saveCommunityPostToResearch(post)} className={`flex items-center gap-2 transition hover:text-emerald-400 ${isSaved ? "text-emerald-300" : ""}`}>
+                    <Bookmark className={`h-4 w-4 ${isSaved ? "fill-emerald-300" : ""}`} /> {isSaved ? "Saved" : "Save"}
                   </button>
                 </div>
+
+                {commentPostId === postId && (
+                  <div className="mt-4 rounded-xl border border-border bg-muted/40 p-4">
+                    {localComments.length > 0 && (
+                      <div className="mb-4 space-y-3">
+                        {localComments.map((comment) => (
+                          <div key={comment.id} className="rounded-lg border border-border bg-card p-3">
+                            <p className="text-xs font-bold text-foreground">{comment.author}</p>
+                            <p className="mt-1 text-sm leading-5 text-muted-foreground">{comment.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        value={commentDrafts[postId] || ""}
+                        onChange={(event) => setCommentDrafts((current) => ({ ...current, [postId]: event.target.value }))}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") addComment(post);
+                        }}
+                        placeholder="Write a comment..."
+                        className="min-w-0 flex-1 rounded-lg border border-border bg-input px-4 py-2 text-sm text-foreground outline-none focus:border-cyan-400"
+                      />
+                      <button
+                        onClick={() => addComment(post)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-foreground transition hover:bg-cyan-300"
+                      >
+                        <Send className="h-4 w-4" />
+                        Reply
+                      </button>
+                    </div>
+                  </div>
+                )}
               </article>
-            ))}
+            )})}
           </div>
         </div>
 
@@ -424,6 +591,66 @@ function loadTelegramSettings() {
   }
 }
 
+function loadCommunityActions(): CommunityActions {
+  if (typeof window === "undefined") return { likedPostIds: [], savedPostIds: [], commentsByPost: {} };
+  try {
+    const raw = localStorage.getItem(LOCAL_COMMUNITY_ACTIONS_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return {
+      likedPostIds: Array.isArray(parsed.likedPostIds) ? parsed.likedPostIds.map(String) : [],
+      savedPostIds: Array.isArray(parsed.savedPostIds) ? parsed.savedPostIds.map(String) : [],
+      commentsByPost: parsed.commentsByPost && typeof parsed.commentsByPost === "object" ? parsed.commentsByPost : {},
+    };
+  } catch {
+    return { likedPostIds: [], savedPostIds: [], commentsByPost: {} };
+  }
+}
+
+function saveCommunityActions(actions: CommunityActions) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LOCAL_COMMUNITY_ACTIONS_KEY, JSON.stringify(actions));
+  } catch {
+    localStorage.setItem(
+      LOCAL_COMMUNITY_ACTIONS_KEY,
+      JSON.stringify({
+        likedPostIds: actions.likedPostIds.slice(-50),
+        savedPostIds: actions.savedPostIds.slice(-50),
+        commentsByPost: {},
+      }),
+    );
+  }
+}
+
+function getResearchStorageKey(session: Session | null) {
+  return `profitpilot-research-${session?.user?.email?.toLowerCase() || "local"}`;
+}
+
+function loadResearchWorkspace(key: string): ResearchWorkspace {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveResearchWorkspace(key: string, workspace: ResearchWorkspace) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(workspace));
+  } catch {
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        ...workspace,
+        savedCommunityPosts: workspace.savedCommunityPosts?.slice(0, 10),
+      }),
+    );
+  }
+}
+
 function hydrateLocalPosts(posts: CommunityPost[], profile: LocalProfile | null) {
   return posts.map((post) =>
     post.isMine
@@ -494,6 +721,16 @@ function saveLocalPost(post: CommunityPost) {
   }
 
   return false;
+}
+
+function removeLocalPost(postId: number | string) {
+  if (typeof window === "undefined") return;
+  const nextPosts = loadLocalPosts().filter((post) => String(post.id) !== String(postId));
+  try {
+    localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(nextPosts));
+  } catch {
+    localStorage.removeItem(LOCAL_POSTS_KEY);
+  }
 }
 
 function sanitizeLocalPost(post: any): CommunityPost | null {
@@ -579,4 +816,31 @@ type TelegramChat = {
   id: string;
   label: string;
   type: string;
+};
+
+type LocalComment = {
+  id: number;
+  author: string;
+  body: string;
+  createdAt: string;
+};
+
+type CommunityActions = {
+  likedPostIds: string[];
+  savedPostIds: string[];
+  commentsByPost: Record<string, LocalComment[]>;
+};
+
+type SavedCommunityPost = {
+  id: string;
+  author: string;
+  role: string;
+  content: string;
+  savedAt: string;
+  source: string;
+};
+
+type ResearchWorkspace = {
+  savedCommunityPosts?: SavedCommunityPost[];
+  [key: string]: unknown;
 };

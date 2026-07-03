@@ -229,7 +229,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                 </span>
               </button>
 
-              <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+              <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto lg:flex">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -238,14 +238,14 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                      className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium leading-none transition ${
                         isActive
                           ? "border border-cyan-400/30 bg-cyan-400/10 text-cyan-200 shadow-lg shadow-cyan-500/10"
                           : "text-muted-foreground hover:bg-white/5 hover:text-slate-100"
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
-                      {tab.label}
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="whitespace-nowrap">{tab.label}</span>
                     </button>
                   );
                 })}
@@ -296,14 +296,14 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                    className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium leading-none transition ${
                       isActive
                         ? "border border-cyan-400/30 bg-cyan-400/10 text-cyan-200"
                         : "text-muted-foreground hover:bg-white/5 hover:text-slate-100"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="whitespace-nowrap">{tab.label}</span>
                   </button>
                 );
               })}
