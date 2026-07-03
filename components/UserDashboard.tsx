@@ -85,7 +85,9 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">User dashboard</p>
         <h1 className="mt-2 text-3xl font-bold text-white">Account, settings, rewards, and contribution status</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-          Signed in as {session?.user.email}. Your account data is stored with Supabase Auth and user_profiles.
+          {session?.user.email
+            ? `Signed in as ${session.user.email}. Your account data is stored with Supabase Auth and user_profiles.`
+            : "Local developer Pro access is active. Supabase profile saving still requires a real signed-in user."}
         </p>
       </div>
 

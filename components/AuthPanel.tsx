@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { Loader2, X } from "lucide-react";
@@ -32,10 +32,12 @@ export default function AuthPanel({
   isOpen,
   onClose,
   onSessionChange,
+  onDevUnlock,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSessionChange: (session: Session | null, profilePlan?: string | null) => void;
+  onDevUnlock?: () => void;
 }) {
   const [mode, setMode] = useState<"signin" | "signup">("signup");
   const [email, setEmail] = useState("");
@@ -45,6 +47,14 @@ export default function AuthPanel({
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [showDevUnlock, setShowDevUnlock] = useState(false);
+  const [devUnlockOpen, setDevUnlockOpen] = useState(false);
+  const [devPassword, setDevPassword] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShowDevUnlock(["localhost", "127.0.0.1"].includes(window.location.hostname));
+  }, []);
 
   if (!isOpen) return null;
 
@@ -189,6 +199,20 @@ export default function AuthPanel({
     setMessage("Passwordless login link sent. Check inbox, spam, and promotions.");
   }
 
+  function unlockLocalAdmin() {
+    if (devPassword !== "1227") {
+      setStatus("error");
+      setMessage("Incorrect local developer password.");
+      return;
+    }
+
+    localStorage.setItem("profitpilot-dev-admin", "true");
+    onDevUnlock?.();
+    setStatus("success");
+    setMessage("Local developer Pro access unlocked.");
+    onClose();
+  }
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-xl border border-slate-800 bg-[#0d1322] p-6 shadow-2xl shadow-black/40">
@@ -307,6 +331,38 @@ export default function AuthPanel({
           </a>
           .
         </p>
+
+        {showDevUnlock && (
+          <div className="mt-5 border-t border-slate-800 pt-4">
+            {!devUnlockOpen ? (
+              <button
+                type="button"
+                onClick={() => setDevUnlockOpen(true)}
+                className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-600 transition hover:text-cyan-300"
+              >
+                Dev admin
+              </button>
+            ) : (
+              <div className="grid gap-3">
+                <p className="text-xs text-slate-500">Localhost-only developer access. Hidden on Vercel.</p>
+                <input
+                  type="password"
+                  value={devPassword}
+                  onChange={(event) => setDevPassword(event.target.value)}
+                  placeholder="Developer password"
+                  className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+                />
+                <button
+                  type="button"
+                  onClick={unlockLocalAdmin}
+                  className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-200 transition hover:bg-cyan-400/20"
+                >
+                  Unlock local Pro access
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

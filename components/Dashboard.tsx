@@ -32,6 +32,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   const [session, setSession] = useState<Session | null>(null);
   const [profilePlan, setProfilePlan] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [devAdminUnlocked, setDevAdminUnlocked] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -111,8 +112,14 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    setDevAdminUnlocked(isLocalhost && localStorage.getItem("profitpilot-dev-admin") === "true");
+  }, []);
+
   const safeProducts = products;
-  const accessPlan = getAccessPlan(session, profilePlan);
+  const accessPlan = devAdminUnlocked ? "pro" : getAccessPlan(session, profilePlan);
   const productLimit = accessPlan === "pro" ? safeProducts.length : accessPlan === "registered" ? 100 : 12;
 
   const filtered = useMemo(() => {
@@ -146,6 +153,8 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   async function handleSignOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
+    localStorage.removeItem("profitpilot-dev-admin");
+    setDevAdminUnlocked(false);
     setSession(null);
     setProfilePlan(null);
     setActiveTab("Home");
@@ -207,13 +216,13 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               </nav>
 
               <div className="hidden shrink-0 items-center gap-2 sm:flex">
-                {session?.user ? (
+                {session?.user || devAdminUnlocked ? (
                   <>
                     <button
                       onClick={() => setActiveTab("Profile")}
                       className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-300"
                     >
-                      {accessPlan === "pro" ? "Pro Access" : "Registered"}
+                      {devAdminUnlocked ? "Local Pro" : accessPlan === "pro" ? "Pro Access" : "Registered"}
                     </button>
                     <button
                       onClick={handleSignOut}
@@ -442,7 +451,12 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
           setActiveTab("Research");
         }}
       />
-      <AuthPanel isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onSessionChange={updateSession} />
+      <AuthPanel
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onSessionChange={updateSession}
+        onDevUnlock={() => setDevAdminUnlocked(true)}
+      />
     </>
   );
 }
