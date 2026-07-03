@@ -400,7 +400,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               description="Supplier comparison, logistics estimates, and sourcing workflows are reserved for Pro access."
               onLogin={() => setIsAuthOpen(true)}
             >
-              <SourcingIntelligence />
+              <SourcingIntelligence products={safeProducts} />
             </AccessGate>
           )}
           {activeTab === "Community" && (
@@ -411,7 +411,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               description="Register to access discussion topics, events, and product operator groups."
               onLogin={() => setIsAuthOpen(true)}
             >
-              <CommunityHub />
+              <CommunityHub session={session} />
             </AccessGate>
           )}
           {activeTab === "Profile" && (

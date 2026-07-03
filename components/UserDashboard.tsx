@@ -24,11 +24,16 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
     let isMounted = true;
 
     async function loadProfile() {
-      const { data } = await supabase!
+      const { data, error } = await supabase!
         .from("user_profiles")
         .select("display_name,business_type,country")
         .eq("id", session!.user.id)
         .maybeSingle();
+
+      if (error) {
+        setSaveMessage("Profile table is not ready yet. Run SUPABASE_ACCESS_SETUP.sql in Supabase SQL Editor.");
+        return;
+      }
 
       if (!isMounted || !data) return;
       setDisplayName(data.display_name ?? "");
@@ -65,7 +70,13 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
       updated_at: new Date().toISOString(),
     });
 
-    setSaveMessage(error ? error.message : "Profile saved to Supabase.");
+    setSaveMessage(
+      error
+        ? error.message.includes("schema cache") || error.message.includes("user_profiles")
+          ? "Profile table is missing. Run SUPABASE_ACCESS_SETUP.sql in Supabase SQL Editor, then refresh this page."
+          : error.message
+        : "Profile saved to Supabase.",
+    );
   }
 
   return (

@@ -10,6 +10,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 const OWNER_EMAIL = "ahmedawn7@gmail.com";
+const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 export type AccessPlan = "guest" | "registered" | "pro";
 
@@ -19,6 +20,12 @@ export function getAccessPlan(session: Session | null, profilePlan?: string | nu
   if (profilePlan === "pro") return "pro";
   if (session?.user) return "registered";
   return "guest";
+}
+
+function getEmailRedirectUrl() {
+  if (configuredSiteUrl) return configuredSiteUrl;
+  if (typeof window === "undefined") return undefined;
+  return window.location.origin;
 }
 
 export default function AuthPanel({
@@ -121,7 +128,7 @@ export default function AuthPanel({
       email: normalizedEmail,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        emailRedirectTo: getEmailRedirectUrl(),
       },
     });
 

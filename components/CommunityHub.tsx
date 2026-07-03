@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Star, Users } from "lucide-react";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 const mockPosts = [
   {
@@ -44,8 +50,48 @@ const topics = [
   { name: "Malaysia logistics", posts: "41 posts" },
 ];
 
-export default function CommunityHub() {
+export default function CommunityHub({ session }: { session: Session | null }) {
   const [activeTab, setActiveTab] = useState("All");
+  const [postText, setPostText] = useState("");
+  const [posts, setPosts] = useState(mockPosts);
+  const [postStatus, setPostStatus] = useState("");
+
+  async function createPost() {
+    const content = postText.trim();
+    if (!content) {
+      setPostStatus("Write something before posting.");
+      return;
+    }
+
+    const newPost = {
+      id: Date.now(),
+      author: session?.user?.email?.split("@")[0] || "You",
+      role: "Member",
+      time: "Just now",
+      content,
+      likes: 0,
+      comments: 0,
+      rating: 0,
+    };
+
+    setPosts((current) => [newPost, ...current]);
+    setPostText("");
+    setPostStatus("Posted locally.");
+
+    if (!supabase || !session?.user) return;
+
+    const { error } = await supabase.from("community_posts").insert({
+      user_id: session.user.id,
+      title: content.slice(0, 80),
+      body: content,
+    });
+
+    setPostStatus(
+      error
+        ? `Posted locally. Supabase save needs community_posts setup: ${error.message}`
+        : "Posted and saved to Supabase.",
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -65,6 +111,8 @@ export default function CommunityHub() {
               </div>
               <div className="flex-1 space-y-3">
                 <input 
+                  value={postText}
+                  onChange={(event) => setPostText(event.target.value)}
                   className="w-full rounded-lg border border-slate-700 bg-[#070b16] px-4 py-3 text-sm text-white outline-none focus:border-cyan-400" 
                   placeholder="What's on your mind? Share a product or ask a question..." 
                 />
@@ -80,16 +128,20 @@ export default function CommunityHub() {
                       </button>
                     ))}
                   </div>
-                  <button className="rounded-lg bg-cyan-500 px-6 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
+                  <button
+                    onClick={createPost}
+                    className="rounded-lg bg-cyan-500 px-6 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+                  >
                     Post
                   </button>
                 </div>
+                {postStatus && <p className="text-xs text-cyan-300">{postStatus}</p>}
               </div>
             </div>
           </section>
 
           <div className="space-y-4">
-            {mockPosts.map((post) => (
+            {posts.map((post) => (
               <article key={post.id} className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">

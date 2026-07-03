@@ -98,3 +98,56 @@ create policy "Users delete own watchlist"
 on public.user_watchlist
 for delete
 using (auth.uid() = user_id);
+
+create table if not exists public.community_topics (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.community_posts (
+  id uuid primary key default gen_random_uuid(),
+  topic_id uuid references public.community_topics(id) on delete set null,
+  user_id uuid references auth.users(id) on delete set null,
+  title text not null,
+  body text,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.community_events (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  event_date timestamptz,
+  event_type text default 'online',
+  created_at timestamptz default now()
+);
+
+alter table public.community_topics enable row level security;
+alter table public.community_posts enable row level security;
+alter table public.community_events enable row level security;
+
+drop policy if exists "Public read topics" on public.community_topics;
+create policy "Public read topics"
+on public.community_topics
+for select
+using (true);
+
+drop policy if exists "Public read posts" on public.community_posts;
+create policy "Public read posts"
+on public.community_posts
+for select
+using (true);
+
+drop policy if exists "Public read events" on public.community_events;
+create policy "Public read events"
+on public.community_events
+for select
+using (true);
+
+drop policy if exists "Logged in users create posts" on public.community_posts;
+create policy "Logged in users create posts"
+on public.community_posts
+for insert
+with check (auth.uid() = user_id);

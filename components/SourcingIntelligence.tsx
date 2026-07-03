@@ -12,11 +12,22 @@ const SOURCING_PLATFORMS = [
   { name: "Lazada Malaysia", type: "Local competitor check", region: "Malaysia", url: "https://www.lazada.com.my" },
 ];
 
-export default function SourcingIntelligence() {
+export default function SourcingIntelligence({ products = [] }: { products?: any[] }) {
   const [unitCost, setUnitCost] = useState(8);
   const [quantity, setQuantity] = useState(100);
   const [weightKg, setWeightKg] = useState(0.25);
   const [query, setQuery] = useState("");
+  const [selectedProductIndex, setSelectedProductIndex] = useState(0);
+
+  const trendyProducts = useMemo(() => {
+    return products
+      .filter(Boolean)
+      .slice()
+      .sort((a, b) => Number(b.Sales || b.sales || 0) - Number(a.Sales || a.sales || 0))
+      .slice(0, 8);
+  }, [products]);
+
+  const selectedProduct = trendyProducts[selectedProductIndex] || trendyProducts[0];
 
   const estimates = useMemo(() => {
     const productCost = unitCost * quantity;
@@ -53,6 +64,77 @@ export default function SourcingIntelligence() {
             <p className="mt-2 text-sm text-slate-400">{item.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+        <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white">Trending product sourcing queue</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Products below come from your current Supabase product radar. Later the sourcing bot can replace these estimates with scraped availability.
+              </p>
+            </div>
+            <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-300">
+              {trendyProducts.length} linked products
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {trendyProducts.map((product, index) => (
+              <button
+                key={`${getProductName(product)}-${index}`}
+                onClick={() => setSelectedProductIndex(index)}
+                className={`w-full rounded-lg border p-4 text-left transition ${
+                  selectedProductIndex === index
+                    ? "border-cyan-400/50 bg-cyan-400/10"
+                    : "border-slate-800 bg-black/20 hover:border-cyan-400/40"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-bold text-white">{getProductName(product)}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {product.Category || "Uncategorized"} / RM {product.Price_RM || product.Final_Price_Low || "N/A"} / Sales {product.Sales || 0}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-black/40 px-3 py-1 text-xs font-bold text-cyan-300">
+                    Rank #{product.Rank || product.Internal_Rank || index + 1}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+          <h2 className="text-xl font-bold text-white">Availability estimate</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            {selectedProduct ? getProductName(selectedProduct) : "No product selected yet."}
+          </p>
+
+          <div className="mt-6 space-y-3">
+            {buildAvailability(selectedProduct).map((item) => (
+              <a
+                key={item.platform}
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="block rounded-lg border border-slate-800 bg-black/20 p-4 transition hover:border-cyan-400/50"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-bold text-white">{item.platform}</p>
+                    <p className="mt-1 text-xs text-slate-500">{item.note}</p>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.statusClass}`}>
+                    {item.status}
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
       </div>
 
       <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
@@ -149,4 +231,49 @@ function NumberInput({
       />
     </label>
   );
+}
+
+function getProductName(product: any) {
+  if (!product) return "Unknown product";
+  const clean = product.Clean_Name_AI || product.clean_name_ai;
+  if (clean && clean !== "The language entered is not supported at this time.") return clean;
+  return product.Product_Name || product.product_name || "Unknown product";
+}
+
+function buildAvailability(product: any) {
+  const name = encodeURIComponent(getProductName(product));
+  const hasSupplier = Boolean(product?.Supplier_Link);
+  const hasAffiliate = Boolean(product?.Affiliate_Link);
+  const hasProduct = Boolean(product?.Product_URL);
+
+  return [
+    {
+      platform: "Current marketplace listing",
+      status: hasProduct ? "Detected" : "Pending",
+      note: hasProduct ? "Existing product URL found in master table." : "No marketplace URL stored yet.",
+      url: product?.Product_URL || "https://shopee.com.my",
+      statusClass: hasProduct ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300",
+    },
+    {
+      platform: "Supplier link",
+      status: hasSupplier ? "Available" : "To research",
+      note: hasSupplier ? "Supplier URL already attached to this product." : "Future sourcing bot should find 1688, Alibaba, CJ, or AliExpress candidates.",
+      url: product?.Supplier_Link || `https://www.aliexpress.com/wholesale?SearchText=${name}`,
+      statusClass: hasSupplier ? "bg-emerald-400/10 text-emerald-300" : "bg-cyan-400/10 text-cyan-300",
+    },
+    {
+      platform: "Affiliate / reference link",
+      status: hasAffiliate ? "Available" : "Optional",
+      note: hasAffiliate ? "Affiliate reference found." : "No affiliate reference stored yet.",
+      url: product?.Affiliate_Link || `https://www.alibaba.com/trade/search?SearchText=${name}`,
+      statusClass: hasAffiliate ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-700 text-slate-300",
+    },
+    {
+      platform: "CJ Dropshipping check",
+      status: "Bot planned",
+      note: "Placeholder for future automated availability scan.",
+      url: `https://cjdropshipping.com/search/${name}.html`,
+      statusClass: "bg-cyan-400/10 text-cyan-300",
+    },
+  ];
 }
