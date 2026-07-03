@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Beaker, DollarSign, Filter, Home, PackageSearch, Search, TrendingUp, Truck, User, Users } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, TrendingUp, Truck, User, Users } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import ProductDrawer from "@/components/ProductDrawer";
 import HomeView from "@/components/HomeView";
@@ -9,8 +11,13 @@ import CommunityHub from "@/components/CommunityHub";
 import ResearchHub from "@/components/ResearchHub";
 import SourcingIntelligence from "@/components/SourcingIntelligence";
 import UserDashboard from "@/components/UserDashboard";
+import AuthPanel, { getAccessPlan, type AccessPlan } from "@/components/AuthPanel";
+import AccessGate from "@/components/AccessGate";
 
 const LOGO_URL = "/profit-pilot-logo.png";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 export default function Dashboard({ initialProducts }: { initialProducts: any[] }) {
   const [products, setProducts] = useState<any[]>(Array.isArray(initialProducts) ? initialProducts : []);
@@ -22,6 +29,9 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   const [drawerProduct, setDrawerProduct] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState("Home");
   const [activePlatform, setActivePlatform] = useState("All");
+  const [session, setSession] = useState<Session | null>(null);
+  const [profilePlan, setProfilePlan] = useState<string | null>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -57,12 +67,58 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     };
   }, []);
 
+  useEffect(() => {
+    if (!supabase) return;
+
+    let isMounted = true;
+
+    async function loadSession() {
+      const { data } = await supabase!.auth.getSession();
+      if (!isMounted) return;
+      setSession(data.session);
+      if (data.session?.user) {
+        loadProfilePlan(data.session.user.id);
+      }
+    }
+
+    async function loadProfilePlan(userId: string) {
+      const { data } = await supabase!
+        .from("user_profiles")
+        .select("plan")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (isMounted) {
+        setProfilePlan(data?.plan ?? null);
+      }
+    }
+
+    loadSession();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession?.user) {
+        loadProfilePlan(nextSession.user.id);
+      } else {
+        setProfilePlan(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const safeProducts = products;
+  const accessPlan = getAccessPlan(session, profilePlan);
+  const productLimit = accessPlan === "pro" ? safeProducts.length : accessPlan === "registered" ? 100 : 12;
 
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase();
 
-    return safeProducts.filter((product) => {
+    return safeProducts.slice(0, productLimit || safeProducts.length).filter((product) => {
       const name =
         product.Clean_Name_AI ||
         product.clean_name_ai ||
@@ -85,7 +141,22 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
 
       return platformMatches && searchMatches;
     });
-  }, [safeProducts, searchQuery, activePlatform]);
+  }, [safeProducts, searchQuery, activePlatform, productLimit]);
+
+  async function handleSignOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setSession(null);
+    setProfilePlan(null);
+    setActiveTab("Home");
+  }
+
+  function updateSession(nextSession: Session | null, nextProfilePlan?: string | null) {
+    setSession(nextSession);
+    if (nextProfilePlan !== undefined) {
+      setProfilePlan(nextProfilePlan);
+    }
+  }
 
   const tabs = [
     { id: "Home", icon: Home, label: "Home" },
@@ -113,7 +184,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                 </span>
               </button>
 
-              <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
+              <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -135,14 +206,35 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                 })}
               </nav>
 
-              <div className="hidden shrink-0 sm:block">
-                <button className="rounded-full border border-cyan-400/30 bg-transparent px-5 py-2 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/10">
-                  Login / Sign Up
-                </button>
+              <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                {session?.user ? (
+                  <>
+                    <button
+                      onClick={() => setActiveTab("Profile")}
+                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-300"
+                    >
+                      {accessPlan === "pro" ? "Pro Access" : "Registered"}
+                    </button>
+                    <button
+                      onClick={handleSignOut}
+                      className="rounded-full border border-slate-700 bg-transparent p-2 text-slate-400 transition hover:text-white"
+                      aria-label="Sign out"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setIsAuthOpen(true)}
+                    className="rounded-full border border-cyan-400/30 bg-transparent px-5 py-2 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+                  >
+                    Login / Sign Up
+                  </button>
+                )}
               </div>
             </div>
 
-            <nav className="flex gap-2 overflow-x-auto pb-3 md:hidden">
+            <nav className="flex gap-2 overflow-x-auto pb-3 lg:hidden">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -162,6 +254,14 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                   </button>
                 );
               })}
+              {!session?.user && (
+                <button
+                  onClick={() => setIsAuthOpen(true)}
+                  className="flex shrink-0 items-center gap-2 rounded-full border border-cyan-400/30 px-4 py-2 text-sm font-bold text-cyan-300"
+                >
+                  Login
+                </button>
+              )}
             </nav>
           </div>
         </header>
@@ -178,7 +278,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                     {productsStatus === "loading"
                       ? "Loading Supabase products..."
                       : safeProducts.length > 0
-                        ? `${safeProducts.length} Supabase products loaded from MYProductScout_Master.`
+                        ? `${safeProducts.length} Supabase products loaded from MYProductScout_Master. ${accessPlan === "guest" ? "Guest preview is limited to 12 products." : accessPlan === "registered" ? "Registered access shows 100 products." : "Pro access is unlocked."}`
                         : "No Supabase products loaded yet."}
                   </p>
                   {productsStatus === "error" && (
@@ -281,11 +381,57 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
             </section>
           )}
 
-          {activeTab === "Research" && <ResearchHub />}
-          {activeTab === "Sourcing" && <SourcingIntelligence />}
-          {activeTab === "Community" && <CommunityHub />}
-          {activeTab === "Profile" && <UserDashboard />}
+          {activeTab === "Research" && (
+            <AccessGate
+              plan={accessPlan}
+              required="registered"
+              title="Research Hub requires a registered account"
+              description="Create a free account to save research notes, use the AI research workspace, and build product validation workflows."
+              onLogin={() => setIsAuthOpen(true)}
+            >
+              <ResearchHub />
+            </AccessGate>
+          )}
+          {activeTab === "Sourcing" && (
+            <AccessGate
+              plan={accessPlan}
+              required="pro"
+              title="Sourcing Intelligence is a Pro workspace"
+              description="Supplier comparison, logistics estimates, and sourcing workflows are reserved for Pro access."
+              onLogin={() => setIsAuthOpen(true)}
+            >
+              <SourcingIntelligence />
+            </AccessGate>
+          )}
+          {activeTab === "Community" && (
+            <AccessGate
+              plan={accessPlan}
+              required="registered"
+              title="Community requires a registered account"
+              description="Register to access discussion topics, events, and product operator groups."
+              onLogin={() => setIsAuthOpen(true)}
+            >
+              <CommunityHub />
+            </AccessGate>
+          )}
+          {activeTab === "Profile" && (
+            <AccessGate
+              plan={accessPlan}
+              required="registered"
+              title="Login to view your account"
+              description="Your profile, plan, saved products, and settings are connected to Supabase Auth."
+              onLogin={() => setIsAuthOpen(true)}
+            >
+              <UserDashboard session={session} accessPlan={accessPlan} />
+            </AccessGate>
+          )}
         </main>
+
+        <footer className="border-t border-slate-800/80 px-4 py-6 text-center text-xs text-slate-500">
+          <a href="/terms" className="hover:text-cyan-300">Terms of Service</a>
+          <span className="mx-3">/</span>
+          <a href="/privacy" className="hover:text-cyan-300">Privacy Policy</a>
+        </footer>
       </div>
 
       <ProductDrawer
@@ -296,6 +442,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
           setActiveTab("Research");
         }}
       />
+      <AuthPanel isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onSessionChange={updateSession} />
     </>
   );
 }

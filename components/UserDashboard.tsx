@@ -1,19 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { Award, Bell, Bookmark, Camera, Crown, MessageCircle, ShieldCheck, UserCircle } from "lucide-react";
+import type { AccessPlan } from "@/components/AuthPanel";
 
-export default function UserDashboard() {
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+
+export default function UserDashboard({ session, accessPlan }: { session: Session | null; accessPlan: AccessPlan }) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [businessType, setBusinessType] = useState("Seller");
   const [country, setCountry] = useState("Malaysia");
   const [alertsEnabled, setAlertsEnabled] = useState(true);
+  const [saveMessage, setSaveMessage] = useState("");
+
+  useEffect(() => {
+    if (!supabase || !session?.user) return;
+
+    let isMounted = true;
+
+    async function loadProfile() {
+      const { data } = await supabase!
+        .from("user_profiles")
+        .select("display_name,business_type,country")
+        .eq("id", session!.user.id)
+        .maybeSingle();
+
+      if (!isMounted || !data) return;
+      setDisplayName(data.display_name ?? "");
+      setBusinessType(data.business_type ?? "Seller");
+      setCountry(data.country ?? "Malaysia");
+    }
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session]);
 
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     setAvatarPreview(URL.createObjectURL(file));
+  }
+
+  async function saveProfile() {
+    setSaveMessage("");
+    if (!supabase || !session?.user) {
+      setSaveMessage("Login is required before saving profile settings.");
+      return;
+    }
+
+    const { error } = await supabase.from("user_profiles").upsert({
+      id: session.user.id,
+      display_name: displayName.trim(),
+      business_type: businessType,
+      country: country.trim() || "Malaysia",
+      plan: accessPlan,
+      updated_at: new Date().toISOString(),
+    });
+
+    setSaveMessage(error ? error.message : "Profile saved to Supabase.");
   }
 
   return (
@@ -22,7 +74,7 @@ export default function UserDashboard() {
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">User dashboard</p>
         <h1 className="mt-2 text-3xl font-bold text-white">Account, settings, rewards, and contribution status</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-          This is the account center. It is ready for Supabase Auth/profile storage when login is finalized.
+          Signed in as {session?.user.email}. Your account data is stored with Supabase Auth and user_profiles.
         </p>
       </div>
 
@@ -30,7 +82,7 @@ export default function UserDashboard() {
         <Stat icon={Bookmark} label="Saved products" value="0" />
         <Stat icon={MessageCircle} label="Community posts" value="0" />
         <Stat icon={Award} label="Reward points" value="120" />
-        <Stat icon={Crown} label="Plan" value="Guest" />
+        <Stat icon={Crown} label="Plan" value={accessPlan === "pro" ? "Pro" : "Registered"} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.8fr_1fr]">
@@ -67,6 +119,13 @@ export default function UserDashboard() {
               </select>
             </label>
             <Field label="Country" value={country} onChange={setCountry} placeholder="Malaysia" />
+            <button
+              onClick={saveProfile}
+              className="rounded-lg bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-300"
+            >
+              Save profile
+            </button>
+            {saveMessage && <p className="text-sm text-cyan-300">{saveMessage}</p>}
           </div>
         </section>
 
@@ -115,7 +174,7 @@ export default function UserDashboard() {
           <h2 className="text-xl font-bold text-white">Account roadmap</h2>
         </div>
         <p className="text-sm leading-6 text-slate-400">
-          Next account step: connect Supabase Auth, store profile fields in `user_profiles`, upload avatars into Supabase Storage, and sync reward points from community actions.
+          Next account step: add Supabase Storage uploads for profile photos and sync reward points from community actions.
         </p>
       </section>
     </div>
