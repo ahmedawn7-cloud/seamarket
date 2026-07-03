@@ -44,6 +44,7 @@ export default function AuthPanel({
   const [businessType, setBusinessType] = useState("Seller");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   if (!isOpen) return null;
 
@@ -71,6 +72,7 @@ export default function AuthPanel({
     event.preventDefault();
     setStatus("loading");
     setMessage("");
+    setNeedsConfirmation(false);
 
     if (!supabase) {
       setStatus("error");
@@ -96,7 +98,12 @@ export default function AuthPanel({
 
     if (result.error) {
       setStatus("error");
-      setMessage(result.error.message);
+      setMessage(
+        result.error.message.toLowerCase().includes("confirm")
+          ? "This account exists but the email is not confirmed yet. Check spam/promotions or resend confirmation below."
+          : result.error.message,
+      );
+      setNeedsConfirmation(result.error.message.toLowerCase().includes("confirm"));
       return;
     }
 
@@ -111,7 +118,43 @@ export default function AuthPanel({
     }
 
     setStatus("success");
-    setMessage("Check your email to confirm your account, then sign in.");
+    setNeedsConfirmation(true);
+    setMessage("Account created. Check your inbox, spam, and promotions folders to confirm your email, then sign in.");
+  }
+
+  async function resendConfirmation() {
+    setStatus("loading");
+    setMessage("");
+
+    if (!supabase) {
+      setStatus("error");
+      setMessage("Supabase is not configured.");
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: normalizedEmail,
+      options: {
+        emailRedirectTo: getEmailRedirectUrl(),
+      },
+    });
+
+    if (error) {
+      setStatus("error");
+      setNeedsConfirmation(true);
+      setMessage(
+        error.message.toLowerCase().includes("rate")
+          ? "Supabase is rate-limiting confirmation emails. Wait a while or temporarily disable email confirmation in Supabase Auth settings."
+          : error.message,
+      );
+      return;
+    }
+
+    setStatus("success");
+    setNeedsConfirmation(true);
+    setMessage("Confirmation email resent. Check inbox, spam, and promotions.");
   }
 
   return (
@@ -188,9 +231,20 @@ export default function AuthPanel({
             {mode === "signup" ? "Create account" : "Sign in"}
           </button>
 
+          {needsConfirmation && (
+            <button
+              type="button"
+              onClick={resendConfirmation}
+              disabled={status === "loading" || !email.trim()}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-white/5 px-5 py-3 font-bold text-white transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Resend confirmation email
+            </button>
+          )}
+
           <p className="rounded-lg border border-slate-800 bg-black/20 p-3 text-xs leading-5 text-slate-400">
-            Passwordless email links are temporarily disabled during setup to avoid Supabase email rate limits.
-            Use email and password registration for now.
+            If no email arrives, check Supabase Authentication &gt; Users to confirm the account exists. During setup,
+            you can temporarily turn off email confirmation in Supabase Authentication &gt; Providers &gt; Email.
           </p>
         </form>
 
