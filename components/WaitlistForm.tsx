@@ -70,13 +70,13 @@ export default function WaitlistForm() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl rounded-xl border border-slate-800 bg-[#0d1322] p-6 shadow-2xl shadow-black/30">
+    <div className="mx-auto max-w-6xl rounded-xl border border-border bg-card p-6 shadow-2xl shadow-black/30">
       <div className="mb-8 grid gap-4 md:grid-cols-[0.9fr_1.1fr] md:items-end">
         <div>
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Early access</p>
-        <h2 className="text-2xl font-bold text-white md:text-3xl">Join the Profit Pilot AI waitlist</h2>
+        <h2 className="text-2xl font-bold text-foreground md:text-3xl">Join the Profit Pilot AI waitlist</h2>
         </div>
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-400">
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
           Tell us how your business operates so we can prioritize the market intelligence workflows that matter most to you.
         </p>
       </div>
@@ -127,24 +127,24 @@ export default function WaitlistForm() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="grid gap-2 text-sm text-slate-300">
+            <label className="grid gap-2 text-sm text-muted-foreground">
               Main pain point
             <textarea
                 value={mainPainPoint}
                 onChange={(event) => setMainPainPoint(event.target.value)}
                 rows={4}
                 placeholder="Example: I cannot tell which products are worth launching before spending on ads."
-              className="resize-none rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-400"
+              className="resize-none rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none transition focus:border-cyan-400"
             />
           </label>
-            <label className="grid gap-2 text-sm text-slate-300">
+            <label className="grid gap-2 text-sm text-muted-foreground">
               Expected features
               <textarea
                 value={expectedFeatures}
                 onChange={(event) => setExpectedFeatures(event.target.value)}
                 rows={4}
                 placeholder="Example: AI product analysis, supplier comparison, ROI alerts, weekly trend reports."
-                className="resize-none rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-400"
+                className="resize-none rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none transition focus:border-cyan-400"
               />
             </label>
           </div>
@@ -158,7 +158,7 @@ export default function WaitlistForm() {
           <button
             type="submit"
             disabled={status === "loading"}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60 md:w-fit"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500 px-5 py-3 font-bold text-foreground transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60 md:w-fit"
           >
             {status === "loading" && <Loader2 className="h-4 w-4 animate-spin" />}
             {status === "loading" ? "Submitting..." : "Request access"}
@@ -185,7 +185,7 @@ function Field({
   required?: boolean;
 }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-300">
+    <label className="grid gap-2 text-sm text-muted-foreground">
       {label}
       <input
         type={type}
@@ -193,7 +193,7 @@ function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-400"
+        className="rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none transition focus:border-cyan-400"
       />
     </label>
   );
@@ -211,12 +211,12 @@ function SelectField({
   options: string[];
 }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-300">
+    <label className="grid gap-2 text-sm text-muted-foreground">
       {label}
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-400"
+        className="rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none transition focus:border-cyan-400"
       >
         {options.map((option) => (
           <option key={option}>{option}</option>

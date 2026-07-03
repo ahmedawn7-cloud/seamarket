@@ -2,7 +2,7 @@ import type { ChatApiResponse, ChatMessage, PasarAIResponse } from "@/types/chat
 
 const CHAT_TIMEOUT_MS = 12000;
 
-export async function sendPasarAIMessage(messages: ChatMessage[]): Promise<PasarAIResponse> {
+export async function sendPasarAIMessage(messages: ChatMessage[], role: "main" | "research" = "main"): Promise<PasarAIResponse> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
@@ -10,7 +10,7 @@ export async function sendPasarAIMessage(messages: ChatMessage[]): Promise<Pasar
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, role }),
       signal: controller.signal,
     });
 

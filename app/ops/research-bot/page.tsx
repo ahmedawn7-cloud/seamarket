@@ -33,11 +33,11 @@ export default function ResearchBotOpsPage() {
 
         <OpsPanel title="AI Provider">
           <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-black/20 p-3">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
               <span className="text-sm text-slate-300">Groq API</span>
               <StatusPill ok={hasGroq} label={hasGroq ? "ready" : "missing"} />
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-black/20 p-3">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
               <span className="text-sm text-slate-300">OpenAI / Ollama fallback</span>
               <StatusPill ok={false} label="later" />
             </div>

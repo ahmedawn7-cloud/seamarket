@@ -46,8 +46,8 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
     <div className="space-y-8">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Sourcing</p>
-        <h1 className="mt-2 text-3xl font-bold text-white">Source smarter before you commit</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+        <h1 className="mt-2 text-3xl font-bold text-foreground">Source smarter before you commit</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           Compare supplier paths, shipping routes, origin risk, and marketplace availability.
         </p>
       </div>
@@ -58,19 +58,19 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
           { title: "Fulfillment routes", icon: Ship, value: "Air, sea, cross-border warehouse" },
           { title: "Source readiness", icon: PackageCheck, value: "Compare cost, speed, and risk" },
         ].map((item) => (
-          <div key={item.title} className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+          <div key={item.title} className="rounded-xl border border-border bg-card p-5">
             <item.icon className="mb-4 h-6 w-6 text-cyan-300" />
-            <h3 className="font-bold text-white">{item.title}</h3>
-            <p className="mt-2 text-sm text-slate-400">{item.value}</p>
+            <h3 className="font-bold text-foreground">{item.title}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{item.value}</p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-        <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-xl font-bold text-white">Trending product sourcing queue</h2>
+              <h2 className="text-xl font-bold text-foreground">Trending product sourcing queue</h2>
               <p className="mt-1 text-sm text-slate-500">
                 Products below come from your current Supabase product radar. Later the sourcing bot can replace these estimates with scraped availability.
               </p>
@@ -88,17 +88,17 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
                 className={`w-full rounded-lg border p-4 text-left transition ${
                   selectedProductIndex === index
                     ? "border-cyan-400/50 bg-cyan-400/10"
-                    : "border-slate-800 bg-black/20 hover:border-cyan-400/40"
+                    : "border-border bg-muted/50 hover:border-cyan-400/40"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-bold text-white">{getProductName(product)}</p>
+                    <p className="font-bold text-foreground">{getProductName(product)}</p>
                     <p className="mt-1 text-xs text-slate-500">
                       {product.Category || "Uncategorized"} / RM {product.Price_RM || product.Final_Price_Low || "N/A"} / Sales {product.Sales || 0}
                     </p>
                   </div>
-                  <span className="rounded-full bg-black/40 px-3 py-1 text-xs font-bold text-cyan-300">
+                  <span className="rounded-full bg-muted/80 px-3 py-1 text-xs font-bold text-cyan-300">
                     Rank #{product.Rank || product.Internal_Rank || index + 1}
                   </span>
                 </div>
@@ -107,9 +107,9 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
-          <h2 className="text-xl font-bold text-white">Availability estimate</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
+        <section className="rounded-xl border border-border bg-card p-6">
+          <h2 className="text-xl font-bold text-foreground">Availability estimate</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {selectedProduct ? getProductName(selectedProduct) : "No product selected yet."}
           </p>
 
@@ -120,11 +120,11 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
                 href={item.url}
                 target="_blank"
                 rel="noreferrer"
-                className="block rounded-lg border border-slate-800 bg-black/20 p-4 transition hover:border-cyan-400/50"
+                className="block rounded-lg border border-border bg-muted/50 p-4 transition hover:border-cyan-400/50"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-bold text-white">{item.platform}</p>
+                    <p className="font-bold text-foreground">{item.platform}</p>
                     <p className="mt-1 text-xs text-slate-500">{item.note}</p>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.statusClass}`}>
@@ -137,10 +137,10 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
         </section>
       </div>
 
-      <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-bold text-white">Sourcing platform directory</h2>
+            <h2 className="text-xl font-bold text-foreground">Sourcing platform directory</h2>
             <p className="mt-1 text-sm text-slate-500">Starter directory for Malaysia-compatible sourcing research.</p>
           </div>
           <div className="relative w-full sm:w-72">
@@ -149,7 +149,7 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search platforms..."
-              className="w-full rounded-full border border-slate-700 bg-black/30 py-2 pl-10 pr-4 text-sm text-white outline-none focus:border-cyan-400"
+              className="w-full rounded-full border border-border bg-muted py-2 pl-10 pr-4 text-sm text-foreground outline-none focus:border-cyan-400"
             />
           </div>
         </div>
@@ -161,10 +161,10 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
               href={platform.url}
               target="_blank"
               rel="noreferrer"
-              className="rounded-xl border border-slate-800 bg-black/20 p-5 transition hover:border-cyan-400/60 hover:bg-cyan-400/5"
+              className="rounded-xl border border-border bg-muted/50 p-5 transition hover:border-cyan-400/60 hover:bg-cyan-400/5"
             >
-              <h3 className="font-bold text-white">{platform.name}</h3>
-              <p className="mt-2 text-sm text-slate-400">{platform.type}</p>
+              <h3 className="font-bold text-foreground">{platform.name}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{platform.type}</p>
               <p className="mt-4 text-xs font-bold uppercase tracking-widest text-cyan-300">{platform.region}</p>
             </a>
           ))}
@@ -172,10 +172,10 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.8fr_1fr]">
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5 flex items-center gap-3">
             <Factory className="h-5 w-5 text-emerald-300" />
-            <h2 className="text-xl font-bold text-white">Sourcing calculator</h2>
+            <h2 className="text-xl font-bold text-foreground">Sourcing calculator</h2>
           </div>
           <div className="space-y-4">
             <NumberInput label="Supplier unit cost" value={unitCost} onChange={setUnitCost} />
@@ -184,17 +184,17 @@ export default function SourcingIntelligence({ products = [] }: { products?: any
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5 flex items-center gap-3">
             <Truck className="h-5 w-5 text-cyan-300" />
-            <h2 className="text-xl font-bold text-white">Logistics estimate</h2>
+            <h2 className="text-xl font-bold text-foreground">Logistics estimate</h2>
           </div>
           <div className="space-y-3">
             {estimates.map((estimate) => (
-              <div key={estimate.method} className="rounded-lg border border-slate-800 bg-black/20 p-4">
+              <div key={estimate.method} className="rounded-lg border border-border bg-muted/50 p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-bold text-white">{estimate.method}</p>
+                    <p className="font-bold text-foreground">{estimate.method}</p>
                     <p className="text-sm text-slate-500">{estimate.days}</p>
                   </div>
                   <p className="text-lg font-bold text-cyan-300">RM {estimate.cost.toFixed(2)}</p>
@@ -220,14 +220,14 @@ function NumberInput({
   step?: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-300">
+    <label className="grid gap-2 text-sm text-muted-foreground">
       {label}
       <input
         type="number"
         step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-400"
+        className="rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none focus:border-cyan-400"
       />
     </label>
   );
@@ -266,7 +266,7 @@ function buildAvailability(product: any) {
       status: hasAffiliate ? "Available" : "Optional",
       note: hasAffiliate ? "Affiliate reference found." : "No affiliate reference stored yet.",
       url: product?.Affiliate_Link || `https://www.alibaba.com/trade/search?SearchText=${name}`,
-      statusClass: hasAffiliate ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-700 text-slate-300",
+      statusClass: hasAffiliate ? "bg-emerald-400/10 text-emerald-300" : "bg-slate-700 text-muted-foreground",
     },
     {
       platform: "CJ Dropshipping check",

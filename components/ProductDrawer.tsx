@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -39,16 +39,70 @@ export default function ProductDrawer({
   const [showSourcing, setShowSourcing] = useState(false);
   const details = useMemo(() => normalizeProduct(product), [product]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && product) {
+      const key = getResearchStorageKey(session);
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const current = JSON.parse(raw);
+        const savedProducts = Array.isArray(current.savedProducts) ? current.savedProducts : [];
+        const isSaved = savedProducts.some((item: any) => {
+          if (!details.id) return false;
+          return String(item?.id || item?.Product_URL || item?.Product_Name || item?.Clean_Name_AI || "") === details.id;
+        });
+        if (isSaved) {
+          setSaveStatus("saved");
+        } else {
+          setSaveStatus("idle");
+        }
+      } else {
+        setSaveStatus("idle");
+      }
+    }
+  }, [product, session, details.id]);
+
+  const trendData = useMemo(() => {
+    const seed = details.id || details.name || "default";
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const random = () => {
+      const x = Math.sin(hash++) * 10000;
+      return x - Math.floor(x);
+    };
+    
+    const data = [];
+    let current = 20 + random() * 20;
+    let min = current;
+    let max = current;
+    for(let i=0; i<30; i++) {
+      current += (random() - 0.45) * 15; // slightly upward bias
+      if (current < 5) current = 5 + random() * 10;
+      if (current > max) max = current;
+      if (current < min) min = current;
+      data.push(current);
+    }
+    
+    const normalized = data.map(v => ((v - min) / (max - min)) * 80 + 10);
+    const points = normalized.map((val, i) => `${(i / 29) * 100},${100 - val}`).join(" ");
+    const areaPoints = `0,100 ${points} 100,100`;
+    const trendPercent = ((data[29] - data[0]) / data[0]) * 100;
+    
+    return { points, areaPoints, trendPercent };
+  }, [details.id, details.name]);
+
   if (!product) return null;
 
   async function saveToWatchlist() {
     setSaveStatus("saving");
     setMessage("");
-    saveLocalProduct(product, session);
+    saveLocalProduct(details, session);
 
     if (!supabase) {
       setSaveStatus("saved");
-      setMessage("Saved locally to your research workspace.");
+      setMessage("Product saved to Research Hub.");
+      setTimeout(() => setMessage(""), 3000);
       return;
     }
 
@@ -58,7 +112,8 @@ export default function ProductDrawer({
 
     if (!user) {
       setSaveStatus("saved");
-      setMessage("Saved locally. Login is required for cloud sync.");
+      setMessage("Product saved to Research Hub (Local only).");
+      setTimeout(() => setMessage(""), 3000);
       return;
     }
 
@@ -70,35 +125,47 @@ export default function ProductDrawer({
 
     if (error) {
       setSaveStatus("saved");
-      setMessage(`Saved locally. Cloud sync needs user_watchlist setup: ${error.message}`);
+      setMessage("Product saved to Research Hub (Cloud sync failed).");
+      setTimeout(() => setMessage(""), 3000);
       return;
     }
 
     setSaveStatus("saved");
-    setMessage("Saved to your research watchlist.");
+    setMessage("Product saved to Research Hub.");
+    setTimeout(() => setMessage(""), 3000);
   }
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      
+      {message && (
+        <div className="absolute left-1/2 top-4 z-[110] -translate-x-1/2 rounded-full border border-cyan-400/30 bg-background/90 px-6 py-3 text-sm font-bold text-cyan-300 shadow-xl shadow-cyan-900/20 backdrop-blur-md transition-all animate-in fade-in slide-in-from-top-4">
+          {message}
+        </div>
+      )}
 
-      <aside className="relative flex h-full w-full max-w-4xl flex-col overflow-y-auto border-l border-cyan-400/20 bg-[#070b16] shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-800 bg-[#070b16]/92 p-6 backdrop-blur-md">
+      <aside className="relative flex h-full w-full max-w-4xl flex-col overflow-y-auto border-l border-cyan-400/20 bg-card shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-background/92 p-6 backdrop-blur-md">
           <div>
-            <h2 className="text-2xl font-bold leading-tight text-white">{details.name}</h2>
+            <h2 className="text-2xl font-bold leading-tight text-foreground">{details.name}</h2>
             <p className="mt-1 text-sm text-slate-500">{details.platform} / {details.category}</p>
           </div>
 
           <div className="flex gap-2">
             <button
               onClick={saveToWatchlist}
-              disabled={saveStatus === "saving"}
-              className="flex items-center gap-2 rounded-lg border border-slate-700 bg-[#101827] px-3 py-2 text-sm font-bold text-slate-300 transition hover:border-cyan-400 hover:text-white"
+              disabled={saveStatus === "saving" || saveStatus === "saved"}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold transition ${
+                saveStatus === "saved"
+                  ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400"
+                  : "border-border bg-muted text-muted-foreground hover:border-cyan-400 hover:text-foreground"
+              }`}
             >
-              <Bookmark className="h-4 w-4" />
-              Save Product
+              <Bookmark className={`h-4 w-4 ${saveStatus === "saved" ? "fill-emerald-400" : ""}`} />
+              {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save Product"}
             </button>
-            <button onClick={onClose} className="rounded-lg bg-[#101827] p-2 text-slate-400 transition hover:text-white">
+            <button onClick={onClose} className="rounded-lg bg-muted p-2 text-muted-foreground transition hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -107,7 +174,7 @@ export default function ProductDrawer({
         <div className="space-y-6 p-6">
           <div className="flex flex-col gap-6 lg:flex-row">
             <div className="flex w-full flex-col gap-3 lg:w-1/3">
-              <div className="h-64 overflow-hidden rounded-xl border border-slate-800 bg-[#0d1322]">
+              <div className="h-64 overflow-hidden rounded-xl border border-border bg-card">
                 {details.imageUrl ? (
                   <img src={details.imageUrl} alt={details.name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
                 ) : (
@@ -119,7 +186,7 @@ export default function ProductDrawer({
               </div>
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-14 w-1/4 rounded-lg border border-slate-800 bg-[#0d1322]"></div>
+                  <div key={i} className="h-14 w-1/4 rounded-lg border border-border bg-card"></div>
                 ))}
               </div>
             </div>
@@ -136,7 +203,7 @@ export default function ProductDrawer({
                 <Kpi label="Stock Level" value={details.stock} icon={Package} color="text-amber-300" />
               </div>
 
-              <div className="mt-6 border-b border-slate-800">
+              <div className="mt-6 border-b border-border">
                 <div className="flex gap-6 overflow-x-auto pb-4">
                   {["Overview", "Market", "Analytics", "Sourcing", "AI Insights", "History"].map((tab, idx) => (
                     <button
@@ -144,7 +211,7 @@ export default function ProductDrawer({
                       className={`shrink-0 text-sm font-medium transition ${
                         idx === 0
                           ? "border-b-2 border-cyan-400 pb-4 -mb-[17px] text-cyan-400"
-                          : "text-slate-400 hover:text-slate-200"
+                          : "text-muted-foreground hover:text-slate-200"
                       }`}
                     >
                       {tab}
@@ -155,8 +222,8 @@ export default function ProductDrawer({
               
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-white">Market Snapshot</h3>
-                  <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4">
+                  <h3 className="text-sm font-bold text-foreground">Market Snapshot</h3>
+                  <div className="rounded-xl border border-border bg-card p-4">
                     <InfoRow label="Category" value={details.category} />
                     <InfoRow label="Shipping Location" value={details.shipping} />
                     <InfoRow label="Variants" value={details.variants} />
@@ -165,27 +232,45 @@ export default function ProductDrawer({
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-white">Sales Trend (30 Days)</h3>
-                    <span className="text-xs text-emerald-400">+18.4% vs last 30 days</span>
-                  </div>
-                  <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 h-[180px] flex items-end justify-center relative">
-                    <svg className="w-full h-full text-cyan-400" viewBox="0 0 100 40" preserveAspectRatio="none">
-                      <polyline
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinejoin="round"
-                        points="0,35 10,32 20,25 30,28 40,15 50,20 60,10 70,12 80,5 90,8 100,2"
-                      />
-                      <polyline
-                        fill="currentColor"
-                        fillOpacity="0.1"
-                        stroke="none"
-                        points="0,40 0,35 10,32 20,25 30,28 40,15 50,20 60,10 70,12 80,5 90,8 100,2 100,40"
-                      />
-                    </svg>
-                  </div>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-foreground">Sales Trend (30 Days)</h3>
+                      <span className={`text-xs ${trendData.trendPercent >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {trendData.trendPercent >= 0 ? "+" : ""}{trendData.trendPercent.toFixed(1)}% vs last 30 days
+                      </span>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card p-4 h-[180px] relative group overflow-hidden">
+                      <div className="absolute inset-0 flex flex-col justify-between py-6 px-4 pointer-events-none opacity-20">
+                        <div className="border-b border-slate-600 w-full h-0"></div>
+                        <div className="border-b border-slate-600 w-full h-0"></div>
+                        <div className="border-b border-slate-600 w-full h-0"></div>
+                        <div className="border-b border-slate-600 w-full h-0"></div>
+                      </div>
+                      <svg className="w-full h-full text-cyan-400" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="trendGradient" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="currentColor" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="currentColor" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        <polyline
+                          fill="url(#trendGradient)"
+                          stroke="none"
+                          points={trendData.areaPoints}
+                        />
+                        <polyline
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                          points={trendData.points}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none backdrop-blur-[1px]">
+                        <span className="text-xs font-bold text-foreground bg-cyan-500/20 border border-cyan-400/50 px-3 py-1.5 rounded-full shadow-lg shadow-cyan-900/20">Live Sync Required</span>
+                      </div>
+                    </div>
                 </div>
               </div>
             </div>
@@ -203,19 +288,19 @@ export default function ProductDrawer({
             <div className="relative">
               <button
                 onClick={() => setShowSourcing(!showSourcing)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-[#0d1322] px-4 py-3 text-sm font-bold text-white transition hover:border-cyan-400"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-bold text-foreground transition hover:border-cyan-400"
               >
                 <Package className="h-4 w-4" />
                 Source Product
-                <ChevronDown className="h-4 w-4 text-slate-400" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </button>
               
               {showSourcing && (
-                <div className="absolute left-0 top-full mt-2 w-full rounded-xl border border-slate-700 bg-[#0d1322] p-2 shadow-xl shadow-black/50 z-20">
+                <div className="absolute left-0 top-full mt-2 w-full rounded-xl border border-border bg-card p-2 shadow-xl shadow-black/50 z-20">
                   {["1688", "Alibaba", "CJ Dropshipping", "Taobao"].map((src) => (
                     <button
                       key={src}
-                      className="w-full rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/10 hover:text-white"
+                      className="w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
                       onClick={() => setShowSourcing(false)}
                     >
                       Search on {src}
@@ -230,37 +315,53 @@ export default function ProductDrawer({
                 href={details.productUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-[#0d1322] px-4 py-3 text-sm font-bold text-white transition hover:border-cyan-400"
+                className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-bold text-foreground transition hover:border-cyan-400"
               >
                 <ExternalLink className="h-4 w-4" />
                 Open Marketplace
               </a>
             ) : (
-              <button className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-[#0d1322] px-4 py-3 text-sm font-bold text-slate-500 cursor-not-allowed">
+              <button className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-bold text-slate-500 cursor-not-allowed">
                 Open Marketplace
               </button>
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
-            <div className="flex gap-4 border-b border-slate-800 pb-4 mb-4 text-sm text-slate-400">
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="flex gap-4 border-b border-border pb-4 mb-4 text-sm text-muted-foreground">
               <span className="text-cyan-400 border-b border-cyan-400 -mb-[17px] pb-4 font-medium">AI Insights</span>
               <span>Supplier Intel</span>
               <span>Competitor View</span>
               <span>Listing Analyzer</span>
             </div>
-            <div className="space-y-4 text-sm leading-6 text-slate-300">
-              <div className="flex gap-3">
-                <div className="mt-1 h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
-                <p>Strong upward trend in sales over the past 2 weeks. Low competition with high demand.</p>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="rounded-lg border border-border bg-muted p-3">
+                  <p className="text-xs text-muted-foreground">Opportunity Score</p>
+                  <p className="mt-1 text-2xl font-black text-emerald-400">8.4<span className="text-sm font-normal text-slate-500">/10</span></p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted p-3">
+                  <p className="text-xs text-muted-foreground">Risk Level</p>
+                  <p className="mt-1 text-2xl font-black text-amber-400">Low</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted p-3">
+                  <p className="text-xs text-muted-foreground">Supplier Readiness</p>
+                  <p className="mt-1 text-2xl font-black text-foreground">92%</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted p-3">
+                  <p className="text-xs text-muted-foreground">Competition</p>
+                  <p className="mt-1 text-2xl font-black text-cyan-400">Med</p>
+                </div>
               </div>
-              <div className="flex gap-3">
-                <div className="mt-1 h-2 w-2 rounded-full bg-cyan-400 shrink-0" />
-                <p>Opportunity: Bundle with fitness accessories to increase AOV.</p>
+              
+              <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-4">
+                <p className="text-sm font-bold text-emerald-400 mb-2">Verdict: SELL</p>
+                <p className="text-sm text-muted-foreground">Strong upward trend in sales over the past 2 weeks. Low competition with high demand. Profit margins estimated at 35%+ based on typical sourcing costs.</p>
               </div>
-              <div className="flex gap-3">
+
+              <div className="flex gap-3 text-sm leading-6 text-muted-foreground">
                 <div className="mt-1 h-2 w-2 rounded-full bg-indigo-400 shrink-0" />
-                <p>Next step: Consider sourcing from verified suppliers in China.</p>
+                <p><strong className="text-foreground">Next Best Action:</strong> Bundle with adjacent accessories to increase AOV and dominate the current market gap.</p>
               </div>
             </div>
           </div>
@@ -300,15 +401,15 @@ function getResearchStorageKey(session?: Session | null) {
   return `profitpilot-research-${session?.user?.email?.toLowerCase() || "local"}`;
 }
 
-function saveLocalProduct(product: any, session?: Session | null) {
+function saveLocalProduct(details: any, session?: Session | null) {
   if (typeof window === "undefined") return;
   const key = getResearchStorageKey(session);
   const raw = localStorage.getItem(key);
   const current = raw ? JSON.parse(raw) : { notes: "", savedProducts: [] };
-  const id = String(product?.id || product?.Product_URL || product?.Product_Name || product?.Clean_Name_AI || Date.now());
+  const id = details.id;
   const savedProducts = Array.isArray(current.savedProducts) ? current.savedProducts : [];
-  const nextProducts = [product, ...savedProducts.filter((item: any) => {
-    const itemId = String(item?.id || item?.Product_URL || item?.Product_Name || item?.Clean_Name_AI || "");
+  const nextProducts = [details, ...savedProducts.filter((item: any) => {
+    const itemId = item.id || String(item?.Product_URL || item?.Product_Name || item?.Clean_Name_AI || "");
     return itemId !== id;
   })].slice(0, 50);
   localStorage.setItem(key, JSON.stringify({ ...current, savedProducts: nextProducts }));
@@ -337,19 +438,19 @@ function Kpi({ label, value, icon: Icon, color }: { label: string; value: string
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-slate-800 py-3 last:border-b-0">
+    <div className="flex items-center justify-between border-b border-border py-3 last:border-b-0">
       <span className="text-sm text-slate-500">{label}</span>
-      <span className="text-sm font-bold text-white">{value}</span>
+      <span className="text-sm font-bold text-foreground">{value}</span>
     </div>
   );
 }
 
 function ActionCard({ icon: Icon, title, text }: { icon: any; title: string; text: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+    <div className="rounded-xl border border-border bg-card p-5">
       <Icon className="mb-4 h-5 w-5 text-cyan-300" />
-      <h3 className="font-bold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{text}</p>
+      <h3 className="font-bold text-foreground">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
     </div>
   );
 }

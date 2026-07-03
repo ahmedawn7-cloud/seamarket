@@ -13,11 +13,11 @@ export default function ProductCard({ product, onQuickView, onPreview }: Product
   const details = normalizeProduct(product);
 
   return (
-    <article className="group overflow-hidden rounded-xl border border-slate-800 bg-[#0d1322] shadow-xl shadow-black/20 transition hover:-translate-y-1 hover:border-cyan-400/60 hover:shadow-cyan-500/10">
+    <article className="group overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/20 transition hover:-translate-y-1 hover:border-cyan-400/60 hover:shadow-cyan-500/10">
       <button
         type="button"
         onClick={() => onPreview?.(product)}
-        className="relative block h-48 w-full overflow-hidden bg-black/30 text-left"
+        className="relative block h-48 w-full overflow-hidden bg-muted text-left"
         aria-label={`Preview ${details.name}`}
       >
         {details.imageUrl ? (
@@ -34,33 +34,33 @@ export default function ProductCard({ product, onQuickView, onPreview }: Product
           </div>
         )}
 
-        <div className="absolute left-3 top-3 rounded-full bg-black/75 px-3 py-1 text-xs font-bold text-white backdrop-blur shadow-sm">
+        <div className="absolute left-3 top-3 rounded-full bg-black/75 px-3 py-1 text-xs font-bold text-foreground backdrop-blur shadow-sm">
           Rank #{details.rank}
         </div>
 
-        <span className="absolute right-3 top-3 p-2 text-slate-300 transition group-hover:text-white drop-shadow-md">
+        <span className="absolute right-3 top-3 p-2 text-muted-foreground transition group-hover:text-foreground drop-shadow-md">
           <Heart className="h-5 w-5" />
         </span>
       </button>
 
       <div className="space-y-4 p-5">
         <div>
-          <h3 className="truncate text-sm font-bold leading-6 text-white">{details.name}</h3>
+          <h3 className="truncate text-sm font-bold leading-6 text-foreground">{details.name}</h3>
           <p className="mt-1 text-xs text-slate-500">{details.category}</p>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 border-b border-slate-800 pb-4">
+        <div className="grid grid-cols-4 gap-2 border-b border-border pb-4">
           <div className="flex flex-col gap-1">
             <span className="text-[10px] text-slate-500">Price</span>
-            <span className="text-xs font-bold text-white">{details.price}</span>
+            <span className="text-xs font-bold text-foreground">{details.price}</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] text-slate-500">Sales (Est.)</span>
-            <span className="text-xs font-bold text-white">{details.sales}</span>
+            <span className="text-xs font-bold text-foreground">{details.sales}</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] text-slate-500">Revenue (Est.)</span>
-            <span className="text-xs font-bold text-white">RM 61K</span>
+            <span className="text-xs font-bold text-foreground">RM 61K</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] text-slate-500">Margin</span>
@@ -79,7 +79,7 @@ export default function ProductCard({ product, onQuickView, onPreview }: Product
 
           <button
             onClick={() => onQuickView(product)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-transparent px-3 py-2.5 text-xs font-bold text-slate-300 transition hover:border-slate-500 hover:text-white"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-transparent px-3 py-2.5 text-xs font-bold text-muted-foreground transition hover:border-slate-500 hover:text-foreground"
           >
             Quick View
           </button>
@@ -162,9 +162,9 @@ function readField(product: any, fieldNames: string[]) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-black/20 px-2 py-3">
+    <div className="rounded-lg border border-border bg-muted/50 px-2 py-3">
       <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-1 truncate text-xs font-bold text-white">{value}</p>
+      <p className="mt-1 truncate text-xs font-bold text-foreground">{value}</p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, Sun, TrendingUp, Truck, User, Users, X } from "lucide-react";
@@ -222,8 +223,8 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex min-h-16 items-center justify-between gap-4 py-3">
               <button onClick={() => setActiveTab("Home")} className="flex shrink-0 items-center gap-3 text-left">
-                <img src={LOGO_URL} alt="Profit Pilot AI" className="h-10 w-10 object-contain" />
-                <span className="hidden text-xl font-bold tracking-tight text-white sm:block">
+                <Image src={LOGO_URL} alt="Profit Pilot AI" width={40} height={40} className="h-10 w-10 object-contain" />
+                <span className="hidden text-xl font-bold tracking-tight text-foreground sm:block">
                   Profit Pilot AI
                 </span>
               </button>
@@ -240,7 +241,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                       className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
                         isActive
                           ? "border border-cyan-400/30 bg-cyan-400/10 text-cyan-200 shadow-lg shadow-cyan-500/10"
-                          : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                          : "text-muted-foreground hover:bg-white/5 hover:text-slate-100"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -269,7 +270,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                     </button>
                     <button
                       onClick={handleSignOut}
-                      className="rounded-full border border-slate-700 bg-transparent p-2 text-slate-400 transition hover:text-white"
+                      className="rounded-full border border-border bg-transparent p-2 text-muted-foreground transition hover:text-foreground"
                       aria-label="Sign out"
                     >
                       <LogOut className="h-4 w-4" />
@@ -298,7 +299,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                     className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
                       isActive
                         ? "border border-cyan-400/30 bg-cyan-400/10 text-cyan-200"
-                        : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                        : "text-muted-foreground hover:bg-white/5 hover:text-slate-100"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -325,8 +326,8 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
             <section className="space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-white">Product Radar</h1>
-                  <p className="mt-2 text-sm text-slate-400">
+                  <h1 className="text-3xl font-bold text-foreground">Product Radar</h1>
+                  <p className="mt-2 text-sm text-muted-foreground">
                     {productsStatus === "loading"
                       ? "Loading Supabase products..."
                       : safeProducts.length > 0
@@ -348,25 +349,25 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-4">
-                <div className="text-sm text-slate-400">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
+                <div className="text-sm text-muted-foreground">
                   Use filters to narrow by platform, category, and price.
                 </div>
                 
                 <div className="flex gap-3">
                   <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="text"
                       placeholder="Search products..."
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
-                      className="w-full rounded-lg border border-slate-700 bg-[#070b16] py-2 pl-10 pr-4 text-sm text-white outline-none transition focus:border-cyan-400"
+                      className="w-full rounded-lg border border-border bg-input py-2 pl-10 pr-4 text-sm text-foreground outline-none transition focus:border-cyan-400"
                     />
                   </div>
                   <button
                     onClick={() => setFiltersOpen((value) => !value)}
-                    className="flex items-center gap-2 rounded-lg border border-slate-700 bg-[#070b16] px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-400"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-input px-4 py-2 text-sm text-muted-foreground transition hover:border-cyan-400"
                   >
                     <Filter className="h-4 w-4" />
                     Filters
@@ -375,13 +376,13 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               </div>
 
               {filtersOpen && (
-                <div className="grid gap-3 rounded-xl border border-slate-800 bg-[#0d1322] p-4 md:grid-cols-4">
+                <div className="grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-4">
                   <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
                     Platform
                     <select
                       value={activePlatform}
                       onChange={(event) => setActivePlatform(event.target.value)}
-                      className="rounded-lg border border-slate-700 bg-[#070b16] px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none"
+                      className="rounded-lg border border-border bg-input px-3 py-2 text-sm font-medium normal-case tracking-normal text-foreground outline-none"
                     >
                       {["All", "Shopee", "Lazada", "TikTok Shop"].map((platform) => (
                         <option key={platform}>{platform}</option>
@@ -393,7 +394,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                     <select
                       value={categoryFilter}
                       onChange={(event) => setCategoryFilter(event.target.value)}
-                      className="rounded-lg border border-slate-700 bg-[#070b16] px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none"
+                      className="rounded-lg border border-border bg-input px-3 py-2 text-sm font-medium normal-case tracking-normal text-foreground outline-none"
                     >
                       {categoryOptions.map((category) => (
                         <option key={category}>{category}</option>
@@ -407,7 +408,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                       value={minPrice}
                       onChange={(event) => setMinPrice(event.target.value)}
                       placeholder="0"
-                      className="rounded-lg border border-slate-700 bg-[#070b16] px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none"
+                      className="rounded-lg border border-border bg-input px-3 py-2 text-sm font-medium normal-case tracking-normal text-foreground outline-none"
                     />
                   </label>
                   <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
@@ -417,40 +418,40 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                       value={maxPrice}
                       onChange={(event) => setMaxPrice(event.target.value)}
                       placeholder="100"
-                      className="rounded-lg border border-slate-700 bg-[#070b16] px-3 py-2 text-sm font-medium normal-case tracking-normal text-white outline-none"
+                      className="rounded-lg border border-border bg-input px-3 py-2 text-sm font-medium normal-case tracking-normal text-foreground outline-none"
                     />
                   </label>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4 mb-6">
-                <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <PackageSearch className="h-4 w-4 text-cyan-400" />
                     Products Tracked
                   </div>
-                  <p className="text-2xl font-bold text-white">{safeProducts.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{safeProducts.length}</p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <TrendingUp className="h-4 w-4 text-emerald-400" />
                     Shown Now
                   </div>
-                  <p className="text-2xl font-bold text-white">{filtered.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{filtered.length}</p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <Activity className="h-4 w-4 text-amber-400" />
                     Avg. Margin
                   </div>
-                  <p className="text-2xl font-bold text-white">32.6%</p>
+                  <p className="text-2xl font-bold text-foreground">32.6%</p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <DollarSign className="h-4 w-4 text-indigo-400" />
                     Total Sales (Est.)
                   </div>
-                  <p className="text-2xl font-bold text-white">RM 3.2M</p>
+                  <p className="text-2xl font-bold text-foreground">RM 3.2M</p>
                 </div>
               </div>
 
@@ -467,7 +468,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-slate-700 bg-black/20 py-16 text-center text-slate-400">
+                <div className="rounded-xl border border-dashed border-border bg-muted/50 py-16 text-center text-muted-foreground">
                   No products found. If this should show data, check your Supabase URL, anon key, and product table RLS.
                 </div>
               )}
@@ -482,7 +483,11 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
               description="Create a free account to save research notes, use the AI research workspace, and build product validation workflows."
               onLogin={() => setIsAuthOpen(true)}
             >
-              <ResearchHub session={session} products={safeProducts} />
+              <ResearchHub 
+                session={session} 
+                products={safeProducts} 
+                onAnalyzeProduct={(p) => setDrawerProduct(p)}
+              />
             </AccessGate>
           )}
           {activeTab === "Sourcing" && (
@@ -520,7 +525,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
           )}
         </main>
 
-        <footer className="border-t border-slate-800/80 px-4 py-6 text-center text-xs text-slate-500">
+        <footer className="border-t border-border/80 px-4 py-6 text-center text-xs text-slate-500">
           <a href="/terms" className="hover:text-cyan-300">Terms of Service</a>
           <span className="mx-3">/</span>
           <a href="/privacy" className="hover:text-cyan-300">Privacy Policy</a>
@@ -620,20 +625,20 @@ function ProductSummaryModal({
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-slate-800 bg-[#0d1322] shadow-2xl shadow-black/40">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-800 p-5">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/40">
+        <div className="flex items-start justify-between gap-4 border-b border-border p-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Product summary</p>
-            <h2 className="mt-2 text-xl font-bold leading-tight text-white">{name}</h2>
+            <h2 className="mt-2 text-xl font-bold leading-tight text-foreground">{name}</h2>
           </div>
-          <button onClick={onClose} className="rounded-lg bg-black/20 p-2 text-slate-400 hover:text-white">
+          <button onClick={onClose} className="rounded-lg bg-muted/50 p-2 text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="grid gap-5 p-5 md:grid-cols-[220px_1fr]">
-          <div className="h-52 overflow-hidden rounded-lg border border-slate-800 bg-black/20">
+          <div className="h-52 overflow-hidden rounded-lg border border-border bg-muted/50">
             {imageUrl ? (
-              <img src={imageUrl} alt={name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+              <div className="relative h-full w-full"><Image src={imageUrl} alt={name} fill unoptimized referrerPolicy="no-referrer" className="object-cover" /></div>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-slate-500">No image</div>
             )}
@@ -645,13 +650,13 @@ function ProductSummaryModal({
               <SummaryMetric label="Price" value={`RM ${price}`} />
               <SummaryMetric label="Sales" value={String(sales)} />
             </div>
-            <p className="text-sm leading-6 text-slate-400">
+            <p className="text-sm leading-6 text-muted-foreground">
               This product is grouped under {category}. Use the full analysis view to inspect trend strength,
               sourcing fit, margin assumptions, and marketplace links.
             </p>
             <button
               onClick={() => onAnalyze(product)}
-              className="w-full rounded-lg bg-cyan-500 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+              className="w-full rounded-lg bg-cyan-500 px-5 py-3 text-sm font-bold text-foreground transition hover:bg-cyan-300"
             >
               Analyze product
             </button>
@@ -664,9 +669,9 @@ function ProductSummaryModal({
 
 function SummaryMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-black/20 p-3">
+    <div className="rounded-lg border border-border bg-muted/50 p-3">
       <p className="text-[11px] text-slate-500">{label}</p>
-      <p className="mt-1 line-clamp-2 text-sm font-bold text-white">{value}</p>
+      <p className="mt-1 line-clamp-2 text-sm font-bold text-foreground">{value}</p>
     </div>
   );
 }

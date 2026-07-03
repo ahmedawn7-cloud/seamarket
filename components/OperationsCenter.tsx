@@ -45,24 +45,33 @@ export default function OperationsCenter() {
     setStatus("loading");
     setError("");
 
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+
     try {
       const [healthResponse, scraperResponse] = await Promise.all([
-        fetch("/api/ops/health", { cache: "no-store" }),
-        fetch("/api/ops/scrapers", { cache: "no-store" }),
+        fetch("/api/ops/health", { cache: "no-store", signal: controller.signal }),
+        fetch("/api/ops/scrapers", { cache: "no-store", signal: controller.signal }),
       ]);
 
-      const [healthPayload, scraperPayload] = await Promise.all([healthResponse.json(), scraperResponse.json()]);
+      const [healthPayload, scraperPayload] = await Promise.all([
+        healthResponse.json().catch(() => null),
+        scraperResponse.json().catch(() => null),
+      ]);
 
       if (!healthResponse.ok) {
-        throw new Error(healthPayload.error || "Operations health request failed.");
+        throw new Error(healthPayload?.error || "Operations health request failed.");
       }
 
       setHealth(healthPayload);
-      setScrapers(scraperPayload);
+      setScrapers(scraperPayload || null);
       setStatus("ready");
     } catch (requestError) {
       setStatus("error");
-      setError(requestError instanceof Error ? requestError.message : "Operations request failed.");
+      const isAbort = requestError instanceof DOMException && requestError.name === "AbortError";
+      setError(isAbort ? "Operations diagnostics timed out. Refresh again after the backend finishes starting." : requestError instanceof Error ? requestError.message : "Operations request failed.");
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
 
@@ -86,14 +95,14 @@ export default function OperationsCenter() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">Backend operations</p>
-          <h1 className="mt-2 text-3xl font-bold text-white">Operations Center</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+          <h1 className="mt-2 text-3xl font-bold text-foreground">Operations Center</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
             Site health, Supabase diagnostics, AI readiness, Telegram status, and the foundation for scraper bot operations.
           </p>
         </div>
         <button
           onClick={loadOpsData}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-[#0d1322] px-4 py-3 text-sm font-bold text-cyan-300 transition hover:border-cyan-400"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-bold text-cyan-300 transition hover:border-cyan-400"
         >
           <RefreshCw className={`h-4 w-4 ${status === "loading" ? "animate-spin" : ""}`} />
           Refresh diagnosis
@@ -153,7 +162,7 @@ export default function OperationsCenter() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-slate-400">No critical warnings detected.</p>
+            <p className="text-sm text-muted-foreground">No critical warnings detected.</p>
           )}
         </Panel>
       </div>
@@ -163,25 +172,25 @@ export default function OperationsCenter() {
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.16em] text-slate-500">
               <tr>
-                <th className="border-b border-slate-800 py-3">Table</th>
-                <th className="border-b border-slate-800 py-3">Status</th>
-                <th className="border-b border-slate-800 py-3">Rows</th>
-                <th className="border-b border-slate-800 py-3">Sample</th>
-                <th className="border-b border-slate-800 py-3">Latency</th>
-                <th className="border-b border-slate-800 py-3">Columns</th>
+                <th className="border-b border-border py-3">Table</th>
+                <th className="border-b border-border py-3">Status</th>
+                <th className="border-b border-border py-3">Rows</th>
+                <th className="border-b border-border py-3">Sample</th>
+                <th className="border-b border-border py-3">Latency</th>
+                <th className="border-b border-border py-3">Columns</th>
               </tr>
             </thead>
             <tbody>
               {health?.database.tables.map((table) => (
-                <tr key={table.table} className="text-slate-300">
-                  <td className="border-b border-slate-800 py-3 font-bold text-white">{table.table}</td>
-                  <td className="border-b border-slate-800 py-3">
+                <tr key={table.table} className="text-muted-foreground">
+                  <td className="border-b border-border py-3 font-bold text-foreground">{table.table}</td>
+                  <td className="border-b border-border py-3">
                     <StatusPill ok={table.reachable} label={table.reachable ? "Reachable" : "Error"} />
                   </td>
-                  <td className="border-b border-slate-800 py-3">{table.count ?? 0}</td>
-                  <td className="border-b border-slate-800 py-3">{table.sampleRows ?? 0}</td>
-                  <td className="border-b border-slate-800 py-3">{table.latencyMs} ms</td>
-                  <td className="border-b border-slate-800 py-3 text-xs text-slate-500">
+                  <td className="border-b border-border py-3">{table.count ?? 0}</td>
+                  <td className="border-b border-border py-3">{table.sampleRows ?? 0}</td>
+                  <td className="border-b border-border py-3">{table.latencyMs} ms</td>
+                  <td className="border-b border-border py-3 text-xs text-slate-500">
                     {table.columns?.length ? `${table.columns.length} columns` : table.error?.message || "No sample"}
                   </td>
                 </tr>
@@ -195,12 +204,12 @@ export default function OperationsCenter() {
         <Panel title="Scraper Bot Environment" icon={Bot}>
           <div className="grid gap-4 md:grid-cols-3">
             {(scrapers?.scrapers || health?.scraper.bots || []).map((bot) => (
-              <div key={bot.id || bot.name} className="rounded-xl border border-slate-800 bg-black/20 p-4">
+              <div key={bot.id || bot.name} className="rounded-xl border border-border bg-muted/50 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-bold text-white">{bot.name}</h3>
+                  <h3 className="font-bold text-foreground">{bot.name}</h3>
                   <StatusPill ok={bot.status === "ai_ready" || bot.status === "planned"} label={bot.status || "planned"} />
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-400">{bot.purpose || bot.nextMilestone}</p>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{bot.purpose || bot.nextMilestone}</p>
                 {bot.cadence && <p className="mt-3 text-xs text-cyan-300">Cadence: {bot.cadence}</p>}
               </div>
             ))}
@@ -210,7 +219,7 @@ export default function OperationsCenter() {
         <Panel title="Next Tables" icon={Database}>
           <div className="space-y-2">
             {(scrapers?.recommendedTables || []).map((table) => (
-              <div key={table} className="rounded-lg border border-slate-800 bg-black/20 px-3 py-2 text-sm font-medium text-slate-300">
+              <div key={table} className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm font-medium text-muted-foreground">
                 {table}
               </div>
             ))}
@@ -223,10 +232,10 @@ export default function OperationsCenter() {
 
 function Panel({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+    <section className="rounded-xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center gap-3">
         <Icon className="h-5 w-5 text-cyan-300" />
-        <h2 className="text-lg font-bold text-white">{title}</h2>
+        <h2 className="text-lg font-bold text-foreground">{title}</h2>
       </div>
       {children}
     </section>
@@ -236,8 +245,8 @@ function Panel({ title, icon: Icon, children }: { title: string; icon: any; chil
 function HealthCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: "good" | "warn" | "bad" }) {
   const toneClass = tone === "good" ? "text-emerald-300" : tone === "warn" ? "text-amber-300" : "text-red-300";
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4">
-      <div className="flex items-center gap-2 text-sm text-slate-400">
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Icon className={`h-4 w-4 ${toneClass}`} />
         {label}
       </div>
@@ -248,8 +257,8 @@ function HealthCard({ icon: Icon, label, value, tone }: { icon: any; label: stri
 
 function StatusRow({ label, value, ok }: { label: string; value: string; ok: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-black/20 p-3">
-      <span className="text-sm text-slate-400">{label}</span>
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/50 p-3">
+      <span className="text-sm text-muted-foreground">{label}</span>
       <StatusPill ok={ok} label={value} />
     </div>
   );

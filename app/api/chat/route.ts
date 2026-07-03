@@ -8,27 +8,23 @@ const DEFAULT_PROVIDER = "mock";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json().catch(() => null)) as ChatApiRequest | null;
+    const body = (await request.json().catch(() => null)) as ChatApiRequest & { role?: "main" | "research" } | null;
     const messages = normalizeMessages(body?.messages);
+    const role = body?.role || "main";
     const latestUserMessage = [...messages].reverse().find((message) => message.role === "user");
 
     if (!latestUserMessage?.content.trim()) {
       return NextResponse.json({ error: "Message is required." }, { status: 400 });
     }
 
-    if (!isAllowedPasarTopic(latestUserMessage.content)) {
-      return NextResponse.json({
-        reply:
-          "I specialize in ecommerce intelligence for Shopee, Lazada, TikTok Shop, product research, supplier sourcing, Malaysian compliance, marketplace analytics, and seller strategy. Ask me about a product, category, margin, supplier, regulation, or marketplace decision and I will help from there.",
-      });
-    }
+
 
     const response = await withTimeout(
       async () => {
-        const provider = (process.env.AI_PROVIDER || DEFAULT_PROVIDER).trim().toLowerCase();
+        const provider = process.env.GROQ_API_KEY ? "groq" : "mock";
 
         if (provider === "groq") {
-          return getGroqChatReply(messages);
+          return getGroqChatReply(messages, role);
         }
 
         // Later OpenAI/Ollama connection point:

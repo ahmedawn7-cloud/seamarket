@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
+const TABLE_CHECK_TIMEOUT_MS = 4500;
 
 const REQUIRED_PRODUCT_COLUMNS = [
   "Scrape_Date",
@@ -68,7 +69,7 @@ export async function GET() {
     },
   });
 
-  const tableChecks = await Promise.all(CORE_TABLES.map((table) => checkTable(supabase, table)));
+  const tableChecks = await Promise.all(CORE_TABLES.map((table) => withTimeout(checkTable(supabase, table), table, TABLE_CHECK_TIMEOUT_MS)));
   const productTable = tableChecks.find((table) => table.table === "MYProductScout_Master");
   const productColumns = productTable?.columns ?? [];
   const missingProductColumns = REQUIRED_PRODUCT_COLUMNS.filter((column) => !productColumns.includes(column));
@@ -121,6 +122,38 @@ async function checkTable(supabase: any, table: string) {
           details: error.details,
         }
       : null,
+  };
+}
+
+async function withTimeout<T>(promise: Promise<T>, table: string, timeoutMs: number): Promise<T | ReturnType<typeof timeoutTableResult>> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<ReturnType<typeof timeoutTableResult>>((resolve) => {
+        timeoutId = setTimeout(() => resolve(timeoutTableResult(table, timeoutMs)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+function timeoutTableResult(table: string, timeoutMs: number) {
+  return {
+    table,
+    required: table === "MYProductScout_Master",
+    reachable: false,
+    count: 0,
+    sampleRows: 0,
+    columns: [],
+    latencyMs: timeoutMs,
+    error: {
+      code: "OPS_TIMEOUT",
+      message: `Table check timed out after ${timeoutMs}ms.`,
+      details: "The dashboard continued loading with degraded diagnostics.",
+    },
   };
 }
 

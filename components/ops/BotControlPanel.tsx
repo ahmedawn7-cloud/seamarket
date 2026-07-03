@@ -167,7 +167,7 @@ export default function BotControlPanel({
             {diagnostic.quality && (
               <div className="grid gap-3 md:grid-cols-4">
                 {Object.entries(diagnostic.quality).map(([key, value]) => (
-                  <div key={key} className="rounded-lg border border-slate-800 bg-black/30 p-3">
+                  <div key={key} className="rounded-lg border border-border bg-muted p-3">
                     <p className="text-xs text-slate-500">{key}</p>
                     <p className="mt-1 text-xl font-bold text-emerald-300">{String(value)}%</p>
                   </div>
@@ -180,12 +180,12 @@ export default function BotControlPanel({
                 <OpsList items={diagnostic.missingMasterColumns} />
               </div>
             )}
-            <pre className="max-h-[520px] overflow-auto rounded-xl border border-slate-800 bg-[#020812] p-4 text-xs leading-5 text-emerald-200">
+            <pre className="max-h-[520px] overflow-auto rounded-xl border border-border bg-[#020812] p-4 text-xs leading-5 text-emerald-200">
               {JSON.stringify(diagnostic, null, 2)}
             </pre>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-800 bg-black/20 p-8 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-dashed border-border bg-muted/50 p-8 text-center text-sm text-slate-500">
             Select dates and a table, then queue/evaluate to see Supabase diagnostics.
           </div>
         )}

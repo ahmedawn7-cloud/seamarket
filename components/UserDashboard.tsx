@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { Award, Bell, Bookmark, Camera, Crown, MessageCircle, ShieldCheck, UserCircle } from "lucide-react";
@@ -18,14 +19,28 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
   const [country, setCountry] = useState("Malaysia");
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [saveMessage, setSaveMessage] = useState("");
+  const [savedCount, setSavedCount] = useState(0);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const key = `profitpilot-research-${session?.user?.email?.toLowerCase() || "local"}`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const count = JSON.parse(raw).savedProducts?.length || 0;
+          setSavedCount(count);
+        } catch (e) {}
+      }
+    }
+    
     const localProfile = loadLocalProfile();
     if (localProfile) {
-      setDisplayName(localProfile.displayName ?? "");
-      setBusinessType(localProfile.businessType ?? "Seller");
-      setCountry(localProfile.country ?? "Malaysia");
-      setAvatarPreview(localProfile.avatarPreview ?? null);
+      setTimeout(() => {
+        setDisplayName(localProfile.displayName ?? "");
+        setBusinessType(localProfile.businessType ?? "Seller");
+        setCountry(localProfile.country ?? "Malaysia");
+        setAvatarPreview(localProfile.avatarPreview ?? null);
+      }, 0);
     }
 
     if (!supabase || !session?.user) return;
@@ -100,8 +115,8 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
     <div className="space-y-8">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">User dashboard</p>
-        <h1 className="mt-2 text-3xl font-bold text-white">Account, settings, rewards, and contribution status</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+        <h1 className="mt-2 text-3xl font-bold text-foreground">Account, settings, rewards, and contribution status</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           {session?.user.email
             ? `Signed in as ${session.user.email}. Your account data is stored with Supabase Auth and user_profiles.`
             : "Local developer Pro access is active. Supabase profile saving still requires a real signed-in user."}
@@ -109,23 +124,25 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Stat icon={Bookmark} label="Saved products" value="0" />
+        <a href="/?tab=research-hub" className="block transition hover:scale-105">
+          <Stat icon={Bookmark} label="Saved products" value={String(savedCount)} />
+        </a>
         <Stat icon={MessageCircle} label="Community posts" value="0" />
         <Stat icon={Award} label="Reward points" value="120" />
         <Stat icon={Crown} label="Plan" value={accessPlan === "pro" ? "Pro" : "Registered"} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.8fr_1fr]">
-        <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <div className="mb-6 flex items-center gap-4">
-            <div className="relative h-20 w-20 overflow-hidden rounded-full border border-cyan-400/30 bg-black/30">
+            <div className="relative h-20 w-20 overflow-hidden rounded-full border border-cyan-400/30 bg-muted">
               {avatarPreview ? (
-                <img src={avatarPreview} alt="Profile preview" className="h-full w-full object-cover" />
+                <Image src={avatarPreview} alt="Profile preview" fill unoptimized className="object-cover" />
               ) : (
                 <UserCircle className="h-full w-full p-4 text-slate-500" />
               )}
             </div>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-700 bg-white/5 px-4 py-3 text-sm font-bold text-white transition hover:border-cyan-400">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-white/5 px-4 py-3 text-sm font-bold text-foreground transition hover:border-cyan-400">
               <Camera className="h-4 w-4" />
               Add photo
               <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
@@ -134,12 +151,12 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
 
           <div className="space-y-4">
             <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="Your public name" />
-            <label className="grid gap-2 text-sm text-slate-300">
+            <label className="grid gap-2 text-sm text-muted-foreground">
               Business type
               <select
                 value={businessType}
                 onChange={(event) => setBusinessType(event.target.value)}
-                className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-400"
+                className="rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none focus:border-cyan-400"
               >
                 <option>Seller</option>
                 <option>Dropshipper</option>
@@ -151,7 +168,7 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
             <Field label="Country" value={country} onChange={setCountry} placeholder="Malaysia" />
             <button
               onClick={saveProfile}
-              className="rounded-lg bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-300"
+              className="rounded-lg bg-cyan-500 px-5 py-3 font-bold text-foreground transition hover:bg-cyan-300"
             >
               Save profile
             </button>
@@ -159,22 +176,22 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <section className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5 flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-emerald-300" />
-            <h2 className="text-xl font-bold text-white">Settings and rewards</h2>
+            <h2 className="text-xl font-bold text-foreground">Settings and rewards</h2>
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-black/20 p-4">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-4">
               <div>
-                <p className="font-bold text-white">Performance alerts</p>
+                <p className="font-bold text-foreground">Performance alerts</p>
                 <p className="mt-1 text-sm text-slate-500">Notify me when saved products move.</p>
               </div>
               <button
                 onClick={() => setAlertsEnabled((value) => !value)}
                 className={`rounded-full px-4 py-2 text-xs font-bold ${
-                  alertsEnabled ? "bg-cyan-500 text-slate-950" : "bg-slate-800 text-slate-400"
+                  alertsEnabled ? "bg-cyan-500 text-foreground" : "bg-muted text-muted-foreground"
                 }`}
               >
                 {alertsEnabled ? "On" : "Off"}
@@ -187,8 +204,8 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
               "Report marketplace policy change",
               "Help validate trending product data",
             ].map((item, index) => (
-              <div key={item} className="flex items-center justify-between rounded-lg border border-slate-800 bg-black/20 p-4">
-                <span className="text-sm text-slate-300">{item}</span>
+              <div key={item} className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-4">
+                <span className="text-sm text-muted-foreground">{item}</span>
                 <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-300">
                   +{(index + 1) * 25} pts
                 </span>
@@ -198,12 +215,12 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
         </section>
       </div>
 
-      <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+      <section className="rounded-xl border border-border bg-card p-6">
         <div className="mb-5 flex items-center gap-3">
           <Bell className="h-5 w-5 text-cyan-300" />
-          <h2 className="text-xl font-bold text-white">Account roadmap</h2>
+          <h2 className="text-xl font-bold text-foreground">Account roadmap</h2>
         </div>
-        <p className="text-sm leading-6 text-slate-400">
+        <p className="text-sm leading-6 text-muted-foreground">
           Next account step: add Supabase Storage uploads for profile photos and sync reward points from community actions.
         </p>
       </section>
@@ -241,7 +258,7 @@ function resizeImageForLocalProfile(file: File) {
 
     reader.onerror = () => reject(new Error("Image read failed."));
     reader.onload = () => {
-      const image = new Image();
+      const image = new window.Image();
       image.onerror = () => reject(new Error("Image decode failed."));
       image.onload = () => {
         const maxSize = 320;
@@ -270,10 +287,10 @@ function resizeImageForLocalProfile(file: File) {
 
 function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+    <div className="rounded-xl border border-border bg-card p-5">
       <Icon className="mb-4 h-6 w-6 text-cyan-300" />
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -290,13 +307,13 @@ function Field({
   placeholder: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-300">
+    <label className="grid gap-2 text-sm text-muted-foreground">
       {label}
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-400"
+        className="rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none focus:border-cyan-400"
       />
     </label>
   );

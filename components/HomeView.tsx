@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   ArrowDown,
   ArrowRight,
@@ -79,31 +80,31 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
       <section className="grid min-h-[calc(100vh-8rem)] items-center gap-8 py-8 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-7">
           <div className="space-y-5">
-            <div className="inline-flex items-center gap-3 rounded-full border border-slate-800 bg-[#0d1322] px-4 py-2">
-              <img src="/profit-pilot-logo.png" alt="Profit Pilot AI" className="h-9 w-9 object-contain" />
+            <div className="inline-flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2">
+              <Image src="/profit-pilot-logo.png" alt="Profit Pilot AI" width={36} height={36} className="h-9 w-9 object-contain" />
               <span className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
                 Profit Pilot AI
               </span>
             </div>
-            <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white md:text-6xl">
+            <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-foreground md:text-6xl">
               Southeast Asia market intelligence for product operators.
             </h1>
           </div>
 
-          <p className="max-w-2xl text-base leading-7 text-slate-400">
+          <p className="max-w-2xl text-base leading-7 text-muted-foreground">
             Monitor demand, margin, suppliers, and marketplace movement from one operating view built for sellers who need evidence before they launch.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               onClick={onExploreProducts}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-cyan-500 px-6 py-3 font-bold text-slate-950 transition hover:bg-cyan-300"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-cyan-500 px-6 py-3 font-bold text-foreground transition hover:bg-cyan-300"
             >
               Open product radar <ArrowRight className="h-4 w-4" />
             </button>
             <button
               onClick={scrollToWaitlist}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-700 bg-white/5 px-6 py-3 font-bold text-slate-200 transition hover:border-cyan-400"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/5 px-6 py-3 font-bold text-slate-200 transition hover:border-cyan-400"
             >
               Request intelligence access
             </button>
@@ -113,10 +114,10 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
             {overviewStats.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div key={stat.label} className="rounded-xl border border-slate-800 bg-[#0d1322] p-4">
+                <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
                   <Icon className="mb-3 h-5 w-5 text-cyan-300" />
                   <p className="text-[11px] text-slate-500">{stat.label}</p>
-                  <p className="mt-1 text-2xl font-bold text-white">{stat.value}</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{stat.value}</p>
                   <p className="mt-1 text-xs text-slate-500">{stat.hint}</p>
                 </div>
               );
@@ -125,13 +126,13 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5 shadow-2xl shadow-black/30">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-2xl shadow-black/30">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">
                   Today's market overview
                 </p>
-                <h2 className="mt-2 text-2xl font-bold text-white">Live commercial signals</h2>
+                <h2 className="mt-2 text-2xl font-bold text-foreground">Live commercial signals</h2>
               </div>
               <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
                 Live
@@ -140,9 +141,9 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
 
             <div className="grid gap-3 sm:grid-cols-2">
               {marketSnapshot.slice(0, 4).map((item) => (
-                <div key={item.label} className="rounded-lg border border-slate-800 bg-black/20 p-4">
+                <div key={item.label} className="rounded-lg border border-border bg-muted/50 p-4">
                   <p className="text-xs text-slate-500">{item.label}</p>
-                  <p className="mt-2 text-sm font-bold text-white">{item.value}</p>
+                  <p className="mt-2 text-sm font-bold text-foreground">{item.value}</p>
                   <p className="mt-1 text-xs font-bold text-cyan-300">{item.change}</p>
                 </div>
               ))}
@@ -154,7 +155,7 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
               </p>
               <div className="flex flex-wrap gap-2">
                 {trendingCategories.map((category) => (
-                  <span key={category} className="rounded-full border border-slate-700 bg-black/20 px-3 py-1 text-xs text-slate-300">
+                  <span key={category} className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
                     {category}
                   </span>
                 ))}
@@ -164,7 +165,7 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
 
           <section id="demo-videos" className="grid grid-cols-3 gap-3">
             {VIDEO_URLS.map((url, index) => (
-              <div key={url} className="h-40 overflow-hidden rounded-xl border border-slate-800 bg-black shadow-xl transition hover:border-cyan-400/50 md:h-56">
+              <div key={url} className="h-40 overflow-hidden rounded-xl border border-border bg-black shadow-xl transition hover:border-cyan-400/50 md:h-56">
                 <video
                   autoPlay
                   loop
@@ -188,15 +189,15 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
             Live Market Snapshot
           </p>
-          <h2 className="mt-2 text-3xl font-bold text-white">What moved in the market today</h2>
+          <h2 className="mt-2 text-3xl font-bold text-foreground">What moved in the market today</h2>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="grid gap-3 sm:grid-cols-2">
             {marketSnapshot.map((item) => (
-              <div key={item.label} className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+              <div key={item.label} className="rounded-xl border border-border bg-card p-5">
                 <p className="text-xs text-slate-500">{item.label}</p>
-                <p className="mt-3 text-lg font-bold text-white">{item.value}</p>
+                <p className="mt-3 text-lg font-bold text-foreground">{item.value}</p>
                 <p className="mt-2 text-sm font-bold text-cyan-300">{item.change}</p>
               </div>
             ))}
@@ -211,7 +212,7 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
             Operating System
           </p>
-          <h2 className="mt-2 text-3xl font-bold text-white">From signal to scale</h2>
+          <h2 className="mt-2 text-3xl font-bold text-foreground">From signal to scale</h2>
         </div>
 
         <div className="grid gap-3 md:grid-cols-7">
@@ -220,9 +221,9 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
             return (
               <div key={step.title} className="flex flex-col items-center gap-3">
                 <div className="flex w-full items-center gap-3">
-                  <div className="flex h-16 flex-1 flex-col items-center justify-center rounded-xl border border-slate-800 bg-[#0d1322] px-3 text-center">
+                  <div className="flex h-16 flex-1 flex-col items-center justify-center rounded-xl border border-border bg-card px-3 text-center">
                     <Icon className="mb-2 h-5 w-5 text-cyan-300" />
-                    <p className="text-xs font-bold text-white">{step.title}</p>
+                    <p className="text-xs font-bold text-foreground">{step.title}</p>
                   </div>
                   {index < timeline.length - 1 && (
                     <ArrowDown className="hidden h-4 w-4 shrink-0 rotate-[-90deg] text-slate-600 md:block" />
@@ -235,21 +236,21 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+      <section className="rounded-xl border border-border bg-card p-6">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
               Business Proof
             </p>
-            <h2 className="mt-2 text-3xl font-bold text-white">Built for measurable product decisions</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-400">
+            <h2 className="mt-2 text-3xl font-bold text-foreground">Built for measurable product decisions</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Product operators use Profit Pilot AI to compare demand, avoid saturated categories, and validate supplier economics before ad spend.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {proofStats.map((stat) => (
-              <div key={stat.label} className="rounded-lg border border-slate-800 bg-black/20 p-4">
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
+              <div key={stat.label} className="rounded-lg border border-border bg-muted/50 p-4">
+                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
                 <p className="mt-2 text-xs text-slate-500">{stat.label}</p>
               </div>
             ))}
@@ -263,7 +264,7 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
               Access Plans
             </p>
-            <h2 className="mt-2 text-3xl font-bold text-white">Compare intelligence coverage</h2>
+            <h2 className="mt-2 text-3xl font-bold text-foreground">Compare intelligence coverage</h2>
           </div>
           <button
             onClick={scrollToWaitlist}
@@ -273,17 +274,17 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
           </button>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0d1322]">
-          <div className="grid grid-cols-[1.2fr_repeat(3,0.8fr)] border-b border-slate-800 bg-black/20">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="grid grid-cols-[1.2fr_repeat(3,0.8fr)] border-b border-border bg-muted/50">
             {["Feature", "Guest", "Registered", "Pro"].map((heading) => (
-              <div key={heading} className="p-4 text-sm font-bold text-white">
+              <div key={heading} className="p-4 text-sm font-bold text-foreground">
                 {heading}
               </div>
             ))}
           </div>
           {pricingRows.map((row) => (
-            <div key={row.feature} className="grid grid-cols-[1.2fr_repeat(3,0.8fr)] border-b border-slate-800 last:border-b-0">
-              <div className="p-4 text-sm text-slate-300">{row.feature}</div>
+            <div key={row.feature} className="grid grid-cols-[1.2fr_repeat(3,0.8fr)] border-b border-border last:border-b-0">
+              <div className="p-4 text-sm text-muted-foreground">{row.feature}</div>
               <PlanCell value={row.guest} />
               <PlanCell value={row.registered} />
               <PlanCell value={row.pro} emphasis />
@@ -292,7 +293,7 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
         </div>
       </section>
 
-      <section id="waitlist" className="scroll-mt-24 border-t border-slate-800/80 pt-16">
+      <section id="waitlist" className="scroll-mt-24 border-t border-border/80 pt-16">
         <WaitlistForm />
       </section>
     </div>
@@ -303,13 +304,13 @@ function AnimatedDashboardPreview() {
   const bars = [38, 54, 45, 72, 66, 88, 79, 94];
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5 shadow-2xl shadow-black/30">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-2xl shadow-black/30">
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">
             Command Preview
           </p>
-          <h3 className="mt-2 text-xl font-bold text-white">Market activity engine</h3>
+          <h3 className="mt-2 text-xl font-bold text-foreground">Market activity engine</h3>
         </div>
         <ShieldCheck className="h-6 w-6 text-cyan-300" />
       </div>
@@ -317,12 +318,12 @@ function AnimatedDashboardPreview() {
       <div className="grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
         <div className="space-y-3">
           {["TikTok velocity", "Supplier risk", "Margin stability", "Launch readiness"].map((label, index) => (
-            <div key={label} className="rounded-lg border border-slate-800 bg-black/20 p-3">
+            <div key={label} className="rounded-lg border border-border bg-muted/50 p-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs text-slate-400">{label}</span>
+                <span className="text-xs text-muted-foreground">{label}</span>
                 <span className="text-xs font-bold text-cyan-300">{82 - index * 7}%</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-cyan-400 transition-all duration-700"
                   style={{ width: `${82 - index * 7}%` }}
@@ -332,7 +333,7 @@ function AnimatedDashboardPreview() {
           ))}
         </div>
 
-        <div className="rounded-lg border border-slate-800 bg-black/20 p-4">
+        <div className="rounded-lg border border-border bg-muted/50 p-4">
           <div className="flex h-52 items-end gap-3">
             {bars.map((height, index) => (
               <div key={index} className="flex flex-1 flex-col items-center gap-2">
@@ -354,7 +355,7 @@ function PlanCell({ value, emphasis = false }: { value: string; emphasis?: boole
   const included = value !== "-";
 
   return (
-    <div className={`flex items-center gap-2 p-4 text-sm ${emphasis ? "text-cyan-200" : "text-slate-300"}`}>
+    <div className={`flex items-center gap-2 p-4 text-sm ${emphasis ? "text-cyan-200" : "text-muted-foreground"}`}>
       {included ? (
         <CheckCircle2 className="h-4 w-4 shrink-0 text-cyan-300" />
       ) : (

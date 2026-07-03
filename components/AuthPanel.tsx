@@ -259,21 +259,21 @@ export default function AuthPanel({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl border border-slate-800 bg-[#0d1322] p-6 shadow-2xl shadow-black/40">
+      <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl shadow-black/40">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Secure access</p>
-            <h2 className="mt-2 text-2xl font-bold text-white">Login or create account</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
+            <h2 className="mt-2 text-2xl font-bold text-foreground">Login or create account</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Supabase Auth stores user registration safely. Owner email receives Pro access after verified sign-in.
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg bg-black/30 p-2 text-slate-400 transition hover:text-white">
+          <button onClick={onClose} className="rounded-lg bg-muted p-2 text-muted-foreground transition hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mb-5 grid grid-cols-2 rounded-lg border border-slate-800 bg-black/20 p-1">
+        <div className="mb-5 grid grid-cols-2 rounded-lg border border-border bg-muted/50 p-1">
           {[
             ["signup", "Register"],
             ["signin", "Sign in"],
@@ -283,7 +283,7 @@ export default function AuthPanel({
               type="button"
               onClick={() => setMode(id as "signin" | "signup")}
               className={`rounded-md px-3 py-2 text-sm font-bold transition ${
-                mode === id ? "bg-cyan-500 text-slate-950" : "text-slate-400 hover:text-white"
+                mode === id ? "bg-cyan-500 text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {label}
@@ -295,30 +295,30 @@ export default function AuthPanel({
           type="button"
           onClick={signInWithGoogle}
           disabled={status === "loading"}
-          className="mb-5 inline-flex w-full items-center justify-center gap-3 rounded-lg border border-slate-700 bg-white px-5 py-3 font-bold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mb-5 inline-flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-white px-5 py-3 font-bold text-foreground transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm font-black text-slate-950">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm font-black text-foreground">
             G
           </span>
           Continue with Google
         </button>
 
         <div className="mb-5 flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-slate-600">
-          <div className="h-px flex-1 bg-slate-800" />
+          <div className="h-px flex-1 bg-muted" />
           or use email
-          <div className="h-px flex-1 bg-slate-800" />
+          <div className="h-px flex-1 bg-muted" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "signup" && (
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="Your name" />
-              <label className="grid gap-2 text-sm text-slate-300">
+              <label className="grid gap-2 text-sm text-muted-foreground">
                 Business type
                 <select
                   value={businessType}
                   onChange={(event) => setBusinessType(event.target.value)}
-                  className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-400"
+                  className="rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none transition focus:border-cyan-400"
                 >
                   <option>Seller</option>
                   <option>Dropshipper</option>
@@ -350,7 +350,7 @@ export default function AuthPanel({
           <button
             type="submit"
             disabled={status === "loading"}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-5 py-3 font-bold text-foreground transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === "loading" && <Loader2 className="h-4 w-4 animate-spin" />}
             {mode === "signup" ? "Create account" : "Sign in"}
@@ -361,7 +361,7 @@ export default function AuthPanel({
               type="button"
               onClick={resendConfirmation}
               disabled={status === "loading" || !email.trim()}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-white/5 px-5 py-3 font-bold text-white transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white/5 px-5 py-3 font-bold text-foreground transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Resend confirmation email
             </button>
@@ -371,12 +371,12 @@ export default function AuthPanel({
             type="button"
             onClick={sendPasswordlessLink}
             disabled={status === "loading" || !email.trim()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-white/5 px-5 py-3 font-bold text-white transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white/5 px-5 py-3 font-bold text-foreground transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Send passwordless login link
           </button>
 
-          <p className="rounded-lg border border-slate-800 bg-black/20 p-3 text-xs leading-5 text-slate-400">
+          <p className="rounded-lg border border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
             If Supabase says rate limit exceeded, wait before requesting again or connect SMTP in Supabase. If no email
             arrives, check Authentication &gt; Users to confirm the account exists.
           </p>
@@ -395,7 +395,7 @@ export default function AuthPanel({
         </p>
 
         {showDevUnlock && (
-          <div className="mt-5 border-t border-slate-800 pt-4">
+          <div className="mt-5 border-t border-border pt-4">
             {!devUnlockOpen ? (
               <button
                 type="button"
@@ -412,7 +412,7 @@ export default function AuthPanel({
                   value={devPassword}
                   onChange={(event) => setDevPassword(event.target.value)}
                   placeholder="Developer password"
-                  className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400"
+                  className="rounded-lg border border-border bg-muted px-4 py-3 text-sm text-foreground outline-none transition focus:border-cyan-400"
                 />
                 <button
                   type="button"
@@ -460,7 +460,7 @@ function Field({
   required?: boolean;
 }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-300">
+    <label className="grid gap-2 text-sm text-muted-foreground">
       {label}
       <input
         type={type}
@@ -468,7 +468,7 @@ function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none transition focus:border-cyan-400"
+        className="rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none transition focus:border-cyan-400"
       />
     </label>
   );

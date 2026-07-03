@@ -84,7 +84,7 @@ export default function PrivacyPage() {
         <Link href="/" className="text-sm font-bold text-cyan-300 hover:text-cyan-200">
           Back to Profit Pilot AI
         </Link>
-        <div className="mt-8 rounded-xl border border-slate-800 bg-[#0d1322] p-6 md:p-10">
+        <div className="mt-8 rounded-xl border border-border bg-card p-6 md:p-10">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Privacy Policy</p>
           <h1 className="mt-3 text-3xl font-bold text-white">ProfitPilot AI Privacy Policy</h1>
           <p className="mt-3 text-sm text-slate-500">Effective Date: 3/7/2026. Last Updated: 3/7/2026.</p>

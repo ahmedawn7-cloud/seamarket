@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { Bell, Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Star, Users } from "lucide-react";
@@ -191,22 +192,22 @@ export default function CommunityHub({ session }: { session: Session | null }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white">Community Hub</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-400">
+        <h1 className="text-3xl font-bold text-foreground">Community Hub</h1>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Connect, share, and grow with other sellers.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-6">
-          <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+          <section className="rounded-xl border border-border bg-card p-5">
             <div className="flex gap-4">
               <Avatar author={getCommunityName(session, localProfile)} avatarUrl={localProfile?.avatarPreview || null} highlight />
               <div className="flex-1 space-y-3">
                 <input 
                   value={postText}
                   onChange={(event) => setPostText(event.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-[#070b16] px-4 py-3 text-sm text-white outline-none focus:border-cyan-400" 
+                  className="w-full rounded-lg border border-border bg-input px-4 py-3 text-sm text-foreground outline-none focus:border-cyan-400" 
                   placeholder="What's on your mind? Share a product or ask a question..." 
                 />
                 <div className="flex items-center justify-between">
@@ -215,7 +216,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
                       <button 
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`rounded-full px-4 py-1 text-xs font-medium transition ${activeTab === tab ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30" : "bg-black/30 text-slate-400 border border-slate-700"}`}
+                        className={`rounded-full px-4 py-1 text-xs font-medium transition ${activeTab === tab ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/30" : "bg-muted text-muted-foreground border border-border"}`}
                       >
                         {tab}
                       </button>
@@ -223,7 +224,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
                   </div>
                   <button
                     onClick={createPost}
-                    className="rounded-lg bg-cyan-500 px-6 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+                    className="rounded-lg bg-cyan-500 px-6 py-2 text-sm font-bold text-foreground transition hover:bg-cyan-300"
                   >
                     Post
                   </button>
@@ -237,23 +238,23 @@ export default function CommunityHub({ session }: { session: Session | null }) {
 
           <div className="space-y-4">
             {posts.map((post) => (
-              <article key={post.id} className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+              <article key={post.id} className="rounded-xl border border-border bg-card p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <button onClick={() => setSelectedProfile(post)} className="text-left">
                       <Avatar author={post.author} avatarUrl={post.avatarUrl || null} />
                     </button>
                     <button onClick={() => setSelectedProfile(post)} className="text-left">
-                      <p className="text-sm font-bold text-white">{post.author} <span className="text-xs font-normal text-cyan-400 ml-2">{post.role}</span></p>
+                      <p className="text-sm font-bold text-foreground">{post.author} <span className="text-xs font-normal text-cyan-400 ml-2">{post.role}</span></p>
                       <p className="text-xs text-slate-500">{post.time}</p>
                     </button>
                   </div>
-                  <button className="text-slate-500 hover:text-white">
+                  <button className="text-slate-500 hover:text-foreground">
                     <MoreHorizontal className="h-5 w-5" />
                   </button>
                 </div>
 
-                <div className="mt-4 text-sm leading-6 text-slate-300 whitespace-pre-line">
+                <div className="mt-4 text-sm leading-6 text-muted-foreground whitespace-pre-line">
                   {post.content}
                 </div>
 
@@ -262,21 +263,21 @@ export default function CommunityHub({ session }: { session: Session | null }) {
                     {[1, 2, 3, 4, 5].map(star => (
                       <Star key={star} className={`h-4 w-4 ${star <= post.rating ? "text-amber-400 fill-amber-400" : "text-slate-700"}`} />
                     ))}
-                    <span className="text-xs text-slate-400 ml-2">Product Rating</span>
+                    <span className="text-xs text-muted-foreground ml-2">Product Rating</span>
                   </div>
                 )}
 
                 {post.images && (
-                  <div className="mt-4 h-48 w-full max-w-sm overflow-hidden rounded-lg border border-slate-700">
-                    <img src={post.images[0]} alt="Post attachment" className="h-full w-full object-cover" />
+                  <div className="relative mt-4 h-48 w-full max-w-sm overflow-hidden rounded-lg border border-border">
+                    <Image src={post.images[0]} alt="Post attachment" fill unoptimized className="object-cover" />
                   </div>
                 )}
 
-                <div className="mt-5 flex items-center gap-6 border-t border-slate-800 pt-4 text-sm text-slate-400">
+                <div className="mt-5 flex items-center gap-6 border-t border-border pt-4 text-sm text-muted-foreground">
                   <button className="flex items-center gap-2 transition hover:text-cyan-400">
                     <Heart className="h-4 w-4" /> {post.likes}
                   </button>
-                  <button className="flex items-center gap-2 transition hover:text-white">
+                  <button className="flex items-center gap-2 transition hover:text-foreground">
                     <MessageCircle className="h-4 w-4" /> {post.comments} Comments
                   </button>
                   <div className="flex-1"></div>
@@ -290,11 +291,11 @@ export default function CommunityHub({ session }: { session: Session | null }) {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
+          <div className="rounded-xl border border-border bg-card p-5">
             <div className="mb-4 flex items-center gap-3">
               <Bell className="h-5 w-5 text-cyan-300" />
               <div>
-                <h3 className="font-bold text-white">Telegram alerts</h3>
+                <h3 className="font-bold text-foreground">Telegram alerts</h3>
                 <p className="mt-1 text-xs text-slate-500">Free Telegram bot alerts for community and product signals.</p>
               </div>
             </div>
@@ -303,14 +304,14 @@ export default function CommunityHub({ session }: { session: Session | null }) {
                 value={telegramChatId}
                 onChange={(event) => setTelegramChatId(event.target.value)}
                 placeholder="Numeric Telegram chat ID"
-                className="w-full rounded-lg border border-slate-700 bg-[#070b16] px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
+                className="w-full rounded-lg border border-border bg-input px-4 py-3 text-sm text-foreground outline-none focus:border-cyan-400"
               />
               <p className="text-xs leading-5 text-slate-500">
                 Use a numeric chat ID, not a personal @username. First message your Telegram bot, then click Find chat ID.
               </p>
               <button
                 onClick={findTelegramChats}
-                className="w-full rounded-lg border border-slate-700 bg-white/5 px-4 py-3 text-sm font-bold text-white transition hover:border-cyan-400"
+                className="w-full rounded-lg border border-border bg-white/5 px-4 py-3 text-sm font-bold text-foreground transition hover:border-cyan-400"
               >
                 Find chat ID
               </button>
@@ -323,9 +324,9 @@ export default function CommunityHub({ session }: { session: Session | null }) {
                         setTelegramChatId(chat.id);
                         localStorage.setItem(TELEGRAM_SETTINGS_KEY, JSON.stringify({ chatId: chat.id }));
                       }}
-                      className="w-full rounded-lg border border-slate-800 bg-black/20 p-3 text-left text-xs transition hover:border-cyan-400/40"
+                      className="w-full rounded-lg border border-border bg-muted/50 p-3 text-left text-xs transition hover:border-cyan-400/40"
                     >
-                      <span className="block font-bold text-white">{chat.label}</span>
+                      <span className="block font-bold text-foreground">{chat.label}</span>
                       <span className="mt-1 block text-slate-500">{chat.type} / {chat.id}</span>
                     </button>
                   ))}
@@ -333,7 +334,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
               )}
               <button
                 onClick={sendTelegramTest}
-                className="w-full rounded-lg bg-cyan-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+                className="w-full rounded-lg bg-cyan-500 px-4 py-3 text-sm font-bold text-foreground transition hover:bg-cyan-300"
               >
                 Send test alert
               </button>
@@ -341,12 +342,12 @@ export default function CommunityHub({ session }: { session: Session | null }) {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
-            <h3 className="font-bold text-white mb-4">Trending Topics</h3>
+          <div className="rounded-xl border border-border bg-card p-5">
+            <h3 className="font-bold text-foreground mb-4">Trending Topics</h3>
             <div className="space-y-4">
               {topics.map(topic => (
                 <div key={topic.name} className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-black/30 flex items-center justify-center text-slate-400">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                     <Users className="h-4 w-4" />
                   </div>
                   <div>
@@ -361,16 +362,16 @@ export default function CommunityHub({ session }: { session: Session | null }) {
       </div>
       {selectedProfile && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-slate-800 bg-[#0d1322] p-6 shadow-2xl shadow-black/40">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl shadow-black/40">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-4">
                 <Avatar author={selectedProfile.author} avatarUrl={selectedProfile.avatarUrl || null} />
                 <div>
-                  <h2 className="text-xl font-bold text-white">{selectedProfile.author}</h2>
+                  <h2 className="text-xl font-bold text-foreground">{selectedProfile.author}</h2>
                   <p className="text-sm text-cyan-300">{selectedProfile.role}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedProfile(null)} className="text-slate-500 hover:text-white">
+              <button onClick={() => setSelectedProfile(null)} className="text-slate-500 hover:text-foreground">
                 Close
               </button>
             </div>
@@ -379,7 +380,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
               <ProfileStat label="Likes" value={String(selectedProfile.likes)} />
               <ProfileStat label="Comments" value={String(selectedProfile.comments)} />
             </div>
-            <p className="mt-5 text-sm leading-6 text-slate-400">
+            <p className="mt-5 text-sm leading-6 text-muted-foreground">
               {selectedProfile.isMine
                 ? "This is your local community profile. It uses the photo and details saved in User Dashboard."
                 : "Public seller profile preview. Full user pages can be connected once Supabase profile tables are active."}
@@ -531,11 +532,11 @@ function Avatar({ author, avatarUrl, highlight = false }: { author: string; avat
   return (
     <div
       className={`h-10 w-10 shrink-0 overflow-hidden rounded-full ${
-        highlight ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-800 text-slate-400"
-      } flex items-center justify-center font-bold`}
+        highlight ? "bg-cyan-500/20 text-cyan-400" : "bg-muted text-muted-foreground"
+      } relative overflow-hidden flex items-center justify-center font-bold`}
     >
       {avatarUrl ? (
-        <img src={avatarUrl} alt={`${author} avatar`} className="h-full w-full object-cover" />
+        <Image src={avatarUrl} alt={`${author} avatar`} fill unoptimized className="object-cover" />
       ) : (
         author.charAt(0).toUpperCase()
       )}
@@ -545,8 +546,8 @@ function Avatar({ author, avatarUrl, highlight = false }: { author: string; avat
 
 function ProfileStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-black/20 p-3 text-center">
-      <p className="text-lg font-bold text-white">{value}</p>
+    <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+      <p className="text-lg font-bold text-foreground">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{label}</p>
     </div>
   );

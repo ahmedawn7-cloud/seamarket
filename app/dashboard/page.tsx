@@ -50,7 +50,7 @@ export default function DashboardPage() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((item) => (
-            <div key={item.label} className="rounded-xl border border-gray-800 bg-black/20 p-4">
+            <div key={item.label} className="rounded-xl border border-gray-800 bg-muted/50 p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-gray-500">{item.label}</p>
               <p className="mt-3 text-3xl font-bold text-white">{item.value}</p>
               <p className="mt-2 text-sm text-gray-400">{item.hint}</p>
@@ -64,7 +64,7 @@ export default function DashboardPage() {
           <h2 className="text-xl font-bold text-white">What to do next</h2>
           <div className="mt-5 space-y-4">
             {activity.map((item) => (
-              <div key={item.title} className="rounded-xl border border-gray-800 bg-black/20 p-4">
+              <div key={item.title} className="rounded-xl border border-gray-800 bg-muted/50 p-4">
                 <h3 className="font-semibold text-white">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-gray-400">{item.description}</p>
               </div>
@@ -78,7 +78,7 @@ export default function DashboardPage() {
             {tasks.map((item) => (
               <label
                 key={item}
-                className="flex items-start gap-3 rounded-xl border border-gray-800 bg-black/20 p-4 text-sm text-gray-300"
+                className="flex items-start gap-3 rounded-xl border border-gray-800 bg-muted/50 p-4 text-sm text-gray-300"
               >
                 <input
                   type="checkbox"

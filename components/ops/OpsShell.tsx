@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bot, BrainCircuit, DatabaseZap, LayoutDashboard, MessageSquareText, Shield, Sparkles } from "lucide-react";
 
 const navItems = [
@@ -14,6 +14,16 @@ const navItems = [
 
 export default function OpsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    try {
+      await fetch("/api/ops/logout", { method: "POST" });
+    } finally {
+      router.push("/ops/login");
+      router.refresh();
+    }
+  }
 
   return (
     <div className="theme-shell ops-shell min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -60,15 +70,23 @@ export default function OpsShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="mt-8 rounded-xl border border-slate-800 bg-black/20 p-4">
+          <div className="mt-8 rounded-xl border border-border bg-muted/50 p-4">
             <div className="flex items-center gap-2 text-slate-300">
               <Sparkles className="h-4 w-4 text-emerald-300" />
               <span className="text-sm font-bold">Next hardening</span>
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              Add admin-token middleware before production operator access.
+              Admin-token middleware now protects this environment.
             </p>
           </div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="mt-6 w-full rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-200 transition hover:border-emerald-400/40 hover:bg-emerald-400/15"
+          >
+            Sign out of ops console
+          </button>
         </aside>
 
         <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8">{children}</main>

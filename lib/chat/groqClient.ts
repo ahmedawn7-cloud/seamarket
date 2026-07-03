@@ -9,7 +9,10 @@ type GroqMessage = {
   content: string;
 };
 
-export async function getGroqChatReply(messages: ChatMessage[]) {
+const mainSystemPrompt = "You are ProfitPilot AI, a navigation and platform assistant. Help the user navigate the website, explain how to use the dashboard, understand their profile, and guide them to the Research Hub or Product Views. Be concise and friendly. If they ask deep research questions, tell them to open the Research Hub.";
+const researchSystemPrompt = "You are ProfitPilot AI, a senior business intelligence analyst and ecommerce expert. Focus strictly on product research, business analysis, validation, supplier risks, margins, competition, and market opportunity. Do not answer questions outside of ecommerce/business intelligence. Give direct, data-driven, and highly analytical advice. Provide actionable 'Next Best Action' recommendations.";
+
+export async function getGroqChatReply(messages: ChatMessage[], role: "main" | "research" = "main") {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   const model = process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL;
 
@@ -17,8 +20,10 @@ export async function getGroqChatReply(messages: ChatMessage[]) {
     throw new Error("GROQ_API_KEY is not configured.");
   }
 
+  const systemPrompt = role === "research" ? researchSystemPrompt : mainSystemPrompt;
+
   const groqMessages: GroqMessage[] = [
-    { role: "system", content: pasarSystemPrompt },
+    { role: "system", content: systemPrompt },
     ...messages.slice(-12).map((message) => ({
       role: message.role,
       content: message.content,

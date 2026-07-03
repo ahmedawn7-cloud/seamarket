@@ -3,13 +3,37 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Bell, Bot, Bookmark, Calculator, CalendarDays, Edit3, FilePlus2, Send, Target } from "lucide-react";
+import { Bell, Bot, Bookmark, Calculator, CalendarDays, Edit3, FilePlus2, Send, Target, Package, ArrowRight } from "lucide-react";
+import Image from "next/image";
+import { sendPasarAIMessage } from "@/lib/chat/chatClient";
+import type { ChatMessage } from "@/types/chat";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+type ResearchMessage = {
+  id: string;
+  role: "assistant" | "user";
+  text: string;
+  createdAt: number;
+};
 
-export default function ResearchHub({ session, products = [] }: { session: Session | null; products?: any[] }) {
+const welcomeMessage: ResearchMessage = {
+  id: "welcome",
+  role: "assistant",
+  text: "Ask me what to research: margin, supplier risk, competition, product positioning, or what to check before sourcing.",
+  createdAt: 1,
+};
+
+export default function ResearchHub({ 
+  session, 
+  products = [],
+  onAnalyzeProduct
+}: { 
+  session: Session | null; 
+  products?: any[];
+  onAnalyzeProduct?: (product: any) => void;
+}) {
   const [buyCost, setBuyCost] = useState(18);
   const [sellPrice, setSellPrice] = useState(39);
   const [shipping, setShipping] = useState(4);
@@ -21,12 +45,7 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
   const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
   const [researchTasks, setResearchTasks] = useState<ResearchTask[]>([]);
   const [notesStatus, setNotesStatus] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      text: "Ask me what to research: margin, supplier risk, competition, product positioning, or what to check before sourcing.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ResearchMessage[]>([welcomeMessage]);
 
   const result = useMemo(() => {
     const fee = sellPrice * (platformFee / 100);
@@ -99,7 +118,7 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
     setNotesStatus("Loaded saved note.");
   }
 
-  function sendMessage() {
+  async function sendMessage() {
     const text = chatInput.trim();
     if (!text) return;
     const detectedTask = detectResearchTask(text);
@@ -117,57 +136,74 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
         ].slice(0, 20)
       : researchTasks;
 
-    const productMatches = getProductMatches(text, products);
-
     if (detectedTask) {
       setResearchTasks(nextTasks);
       persistWorkspace({ researchTasks: nextTasks });
     }
 
-    setMessages((current) => [
-      ...current,
-      { role: "user", text },
-      {
-        role: "assistant",
-        text: productMatches.length > 0
-          ? buildProductResearchReply(productMatches, detectedTask?.label)
-          : detectedTask
-          ? `Saved request: ${detectedTask.label}. I will keep this in your AI task queue so it can later trigger product monitoring, saved-product rules, or Telegram alerts once the automation layer is connected.`
-          : "Research path: check sales velocity, review quality, supplier cost, shipping speed, and whether the product has a clear video demonstration angle. API-powered AI can be connected here later.",
-      },
-    ]);
+    const newUserMessage = {
+      id: createMessageId("user"),
+      role: "user" as const,
+      text,
+      createdAt: Date.now(),
+    };
+    setMessages((current) => [...current, newUserMessage]);
     setChatInput("");
+
+    try {
+      const history: ChatMessage[] = [...messages, newUserMessage].map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.text,
+        createdAt: message.createdAt,
+      }));
+
+      const res = await sendPasarAIMessage(history, "research");
+      setMessages((current) => [
+        ...current,
+        { id: createMessageId("assistant"), role: "assistant", text: res.content, createdAt: Date.now() },
+      ]);
+    } catch (err: unknown) {
+      const fallback = detectedTask 
+        ? `Saved request: ${detectedTask.label}. I will keep this in your AI task queue.`
+        : "Pasar AI is currently offline. Please check your Groq API connection.";
+      const message = err instanceof Error ? err.message : fallback;
+      setMessages((current) => [
+        ...current,
+        { id: createMessageId("assistant"), role: "assistant", text: message || fallback, createdAt: Date.now() },
+      ]);
+    }
   }
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white">Research Hub</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+        <h1 className="text-3xl font-bold text-foreground">Research Hub</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Chat, compare, calculate margins, and build your product thesis before deciding what to source.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5 flex flex-col h-[500px]">
-          <div className="mb-4 flex items-center gap-3 border-b border-slate-800 pb-4">
+        <div className="rounded-xl border border-border bg-card p-5 flex flex-col h-[500px]">
+          <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-500/20 text-cyan-400">
               <Bot className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">ProfitPilot AI</h2>
+              <h2 className="text-lg font-bold text-foreground">ProfitPilot AI</h2>
               <p className="text-xs text-slate-500">Always ready to research</p>
             </div>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto p-2 pr-4">
             {messages.map((message, index) => (
-              <div key={`${message.role}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div key={message.id || `${message.role}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`inline-block max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
                     message.role === "user"
-                      ? "bg-cyan-500 text-slate-950 rounded-br-none"
-                      : "border border-slate-800 bg-[#111827] text-slate-300 rounded-tl-none"
+                      ? "bg-cyan-500 text-foreground rounded-br-none"
+                      : "border border-border bg-card text-muted-foreground rounded-tl-none"
                   }`}
                 >
                   {message.text}
@@ -184,31 +220,31 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
                 if (event.key === "Enter") sendMessage();
               }}
               placeholder="Ask about a product or niche..."
-              className="min-w-0 flex-1 rounded-full border border-slate-700 bg-black/40 px-5 py-3 text-sm text-white outline-none focus:border-cyan-400 transition"
+              className="min-w-0 flex-1 rounded-full border border-border bg-muted/80 px-5 py-3 text-sm text-foreground outline-none focus:border-cyan-400 transition"
             />
-            <button onClick={sendMessage} className="flex items-center justify-center rounded-full bg-cyan-500 p-3 text-slate-950 transition hover:bg-cyan-300">
+            <button onClick={sendMessage} className="flex items-center justify-center rounded-full bg-cyan-500 p-3 text-foreground transition hover:bg-cyan-300">
               <Send className="h-5 w-5" />
             </button>
           </div>
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-5 h-full flex flex-col">
+          <div className="rounded-xl border border-border bg-card p-5 h-full flex flex-col">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Edit3 className="h-5 w-5 text-cyan-300" />
                 <div>
-                  <h2 className="text-lg font-bold text-white">Research Notes & Docs</h2>
+                  <h2 className="text-lg font-bold text-foreground">Research Notes & Docs</h2>
                   <p className="text-xs text-slate-500">{activeNoteId ? "Editing saved note" : "New draft"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={startNewNote} className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-cyan-300 transition">
+                <button onClick={startNewNote} className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-cyan-300 transition">
                   <FilePlus2 className="h-4 w-4" />
                   New
                 </button>
                 <button onClick={() => saveNotes()} className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition">Save Draft</button>
-                <button onClick={saveNoteSnapshot} className="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300">Save Note</button>
+                <button onClick={saveNoteSnapshot} className="rounded-full border border-border px-3 py-1 text-xs font-bold text-muted-foreground transition hover:border-cyan-400 hover:text-cyan-300">Save Note</button>
               </div>
             </div>
             <textarea 
@@ -218,7 +254,7 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
                 saveNotes(e.target.value);
               }}
               placeholder="Jot down your product thesis, supplier links, and cost estimates here..."
-              className="w-full flex-1 resize-none rounded-lg border border-slate-800 bg-[#070b16] p-4 text-sm leading-6 text-slate-300 outline-none focus:border-cyan-400/50 transition"
+              className="w-full flex-1 resize-none rounded-lg border border-border bg-input p-4 text-sm leading-6 text-muted-foreground outline-none focus:border-cyan-400/50 transition"
             />
             {notesStatus && <p className="mt-3 text-xs text-cyan-300">{notesStatus}</p>}
             {savedNotes.length > 0 && (
@@ -229,10 +265,10 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
                     key={note.id}
                     onClick={() => openSavedNote(note)}
                     className={`block w-full rounded-lg border p-3 text-left transition hover:border-cyan-400/40 ${
-                      activeNoteId === note.id ? "border-cyan-400/40 bg-cyan-400/10" : "border-slate-800 bg-black/20"
+                      activeNoteId === note.id ? "border-cyan-400/40 bg-cyan-400/10" : "border-border bg-muted/50"
                     }`}
                   >
-                    <p className="line-clamp-1 text-sm font-bold text-white">{note.title}</p>
+                    <p className="line-clamp-1 text-sm font-bold text-foreground">{note.title}</p>
                     <p className="mt-1 text-xs text-slate-500">{formatDate(note.savedAt)}</p>
                   </button>
                 ))}
@@ -242,12 +278,81 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
         </div>
       </div>
 
-      <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+      <section className="mt-8 rounded-xl border border-border bg-card p-6">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Bookmark className="h-5 w-5 text-emerald-400" />
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Saved Products</h2>
+              <p className="text-sm text-slate-500">Products you are actively tracking and researching.</p>
+            </div>
+          </div>
+        </div>
+        {savedProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12 text-slate-500">
+            <Package className="mb-4 h-10 w-10 opacity-50" />
+            <p>No products saved yet.</p>
+            <p className="text-sm">Browse products and click "Save Product" to track them here.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {savedProducts.map((p, index) => {
+              const name = p.name || p.Product_Name || p["Product Name"] || p.Clean_Name_AI || p.product_name || "Unknown Product";
+              const img = p.imageUrl || p.image_url || p.Image_URL || p.Image || p["Image URL"] || p.image || null;
+              const price = p.price || p.Price_RM || p["Price RM"] || p.price_rm || "N/A";
+              const platform = p.platform || p.Platform || "Unknown";
+              const id = p.id || String(p.Product_URL || name || index);
+              
+              return (
+                <div key={id} className="flex flex-col overflow-hidden rounded-xl border border-border bg-input transition hover:border-cyan-400/50">
+                  <div className="relative h-32 w-full bg-muted">
+                    {img ? (
+                      <Image src={img} alt={name} fill unoptimized className="object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-slate-600">No Image</div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col p-4">
+                    <p className="line-clamp-2 text-sm font-bold text-foreground">{name}</p>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      <p>Platform: <span className="text-slate-200">{platform}</span></p>
+                      <p>Price: <span className="text-slate-200 font-medium">{price}</span></p>
+                    </div>
+                    <div className="mt-auto pt-4 flex gap-2">
+                      <button 
+                        onClick={() => {
+                          const nextProducts = savedProducts.filter(item => {
+                            const itemId = item.id || String(item.Product_URL || item.name || item.Product_Name || "");
+                            return itemId !== id;
+                          });
+                          setSavedProducts(nextProducts);
+                          persistWorkspace({ savedProducts: nextProducts });
+                        }}
+                        className="flex-1 rounded-lg border border-border py-2 text-xs font-bold text-muted-foreground transition hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30"
+                      >
+                        Unsave
+                      </button>
+                      <button 
+                        onClick={() => onAnalyzeProduct?.(p)}
+                        className="flex-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 py-2 text-xs font-bold text-cyan-400 transition hover:bg-cyan-500/20"
+                      >
+                        Analyze
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8 rounded-xl border border-border bg-card p-6">
         <div className="mb-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Bell className="h-5 w-5 text-cyan-300" />
             <div>
-              <h2 className="text-xl font-bold text-white">AI Request Queue</h2>
+              <h2 className="text-xl font-bold text-foreground">AI Request Queue</h2>
               <p className="mt-1 text-xs text-slate-500">Saved tasks for monitoring, alerts, and future bot automation.</p>
             </div>
           </div>
@@ -255,33 +360,33 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
         {researchTasks.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-2">
             {researchTasks.slice(0, 6).map((task) => (
-              <div key={task.id} className="rounded-lg border border-slate-800 bg-black/20 p-4">
+              <div key={task.id} className="rounded-lg border border-border bg-muted/50 p-4">
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-sm font-bold text-white">{task.label}</p>
+                  <p className="text-sm font-bold text-foreground">{task.label}</p>
                   <span className="rounded-full bg-cyan-400/10 px-2 py-1 text-[10px] font-bold text-cyan-300">{task.status}</span>
                 </div>
-                <p className="line-clamp-2 text-xs leading-5 text-slate-400">{task.prompt}</p>
+                <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">{task.prompt}</p>
                 <p className="mt-3 text-[11px] text-slate-500">{formatDate(task.createdAt)}</p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-700 bg-black/20 p-5 text-sm text-slate-400">
+          <div className="rounded-lg border border-dashed border-border bg-muted/50 p-5 text-sm text-muted-foreground">
             Try: "Monitor petshop products", "Save skincare products when available", or "Alert me when a high ROI product appears."
           </div>
         )}
       </section>
 
-      <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+      <section className="rounded-xl border border-border bg-card p-6">
         <div className="mb-5 flex items-center gap-3">
           <Bookmark className="h-5 w-5 text-cyan-300" />
-          <h2 className="text-xl font-bold text-white">Saved Products for Research</h2>
+          <h2 className="text-xl font-bold text-foreground">Saved Products for Research</h2>
         </div>
         {savedProducts.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-3">
             {savedProducts.slice(0, 6).map((product, index) => (
-              <div key={`${getProductName(product)}-${index}`} className="rounded-lg border border-slate-800 bg-black/20 p-4">
-                <p className="line-clamp-2 text-sm font-bold text-white">{getProductName(product)}</p>
+              <div key={`${getProductName(product)}-${index}`} className="rounded-lg border border-border bg-muted/50 p-4">
+                <p className="line-clamp-2 text-sm font-bold text-foreground">{getProductName(product)}</p>
                 <p className="mt-2 text-xs text-slate-500">
                   {product.Category || "Uncategorized"} / RM {product.Price_RM || product.Final_Price_Low || "N/A"}
                 </p>
@@ -289,22 +394,22 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             No saved products yet. Open any product and click Save Product to preload it here.
           </p>
         )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5 flex items-center gap-3">
             <CalendarDays className="h-5 w-5 text-amber-300" />
-            <h2 className="text-xl font-bold text-white">Seasonality Calendar</h2>
+            <h2 className="text-xl font-bold text-foreground">Seasonality Calendar</h2>
           </div>
           <div className="grid grid-cols-4 gap-2">
             {["Q1 (Jan-Mar)", "Q2 (Apr-Jun)", "Q3 (Jul-Sep)", "Q4 (Oct-Dec)"].map((q, idx) => (
-              <div key={q} className={`rounded-lg border border-slate-800 p-3 text-center ${idx === 2 ? "bg-amber-500/10 border-amber-500/30" : "bg-black/20"}`}>
-                <p className={`text-xs font-bold ${idx === 2 ? "text-amber-300" : "text-slate-400"}`}>{q}</p>
+              <div key={q} className={`rounded-lg border border-border p-3 text-center ${idx === 2 ? "bg-amber-500/10 border-amber-500/30" : "bg-muted/50"}`}>
+                <p className={`text-xs font-bold ${idx === 2 ? "text-amber-300" : "text-muted-foreground"}`}>{q}</p>
                 <div className="mt-2 space-y-1">
                   <div className={`h-1.5 w-full rounded-full ${idx === 2 ? "bg-amber-400" : "bg-slate-700"}`}></div>
                   <div className={`h-1.5 w-3/4 mx-auto rounded-full ${idx === 2 ? "bg-amber-400/50" : "bg-slate-700/50"}`}></div>
@@ -312,41 +417,41 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
               </div>
             ))}
           </div>
-          <p className="mt-4 text-xs leading-5 text-slate-400">
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
             <strong>Insight:</strong> Peak demand for Sports & Outdoors occurs in Q3. Consider ramping up inventory by late June.
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5 flex items-center gap-3">
             <Target className="h-5 w-5 text-indigo-300" />
-            <h2 className="text-xl font-bold text-white">Target Audience Insights</h2>
+            <h2 className="text-xl font-bold text-foreground">Target Audience Insights</h2>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-sm text-slate-400">Demographic</span>
-              <span className="text-sm font-medium text-white">Males, 18-34 (62%)</span>
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Demographic</span>
+              <span className="text-sm font-medium text-foreground">Males, 18-34 (62%)</span>
             </div>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-sm text-slate-400">Primary Geo</span>
-              <span className="text-sm font-medium text-white">Kuala Lumpur, Selangor</span>
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Primary Geo</span>
+              <span className="text-sm font-medium text-foreground">Kuala Lumpur, Selangor</span>
             </div>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-sm text-slate-400">Interests</span>
-              <span className="text-sm font-medium text-white">Gym, Crossfit, Running</span>
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Interests</span>
+              <span className="text-sm font-medium text-foreground">Gym, Crossfit, Running</span>
             </div>
           </div>
-          <p className="mt-4 text-xs leading-5 text-slate-400">
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
             <strong>Hook Idea:</strong> "Stop hurting your back during deadlifts..."
           </p>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="mb-5 flex items-center gap-3">
             <Calculator className="h-5 w-5 text-emerald-300" />
-            <h2 className="text-xl font-bold text-white">Quick margin calculator</h2>
+            <h2 className="text-xl font-bold text-foreground">Quick margin calculator</h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -357,8 +462,8 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
-          <h2 className="text-xl font-bold text-white">Estimated result</h2>
+        <div className="rounded-xl border border-border bg-card p-6">
+          <h2 className="text-xl font-bold text-foreground">Estimated result</h2>
           <div className="mt-6 space-y-4">
             <Metric label="Platform fee" value={`RM ${result.fee.toFixed(2)}`} />
             <Metric label="Profit per unit" value={`RM ${result.profit.toFixed(2)}`} highlight={result.profit >= 0 ? "text-emerald-300" : "text-red-300"} />
@@ -372,22 +477,22 @@ export default function ResearchHub({ session, products = [] }: { session: Sessi
 
 function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-300">
+    <label className="grid gap-2 text-sm text-muted-foreground">
       {label}
       <input
         type="number"
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="rounded-lg border border-slate-700 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-400 transition"
+        className="rounded-lg border border-border bg-muted px-4 py-3 text-foreground outline-none focus:border-cyan-400 transition"
       />
     </label>
   );
 }
 
-function Metric({ label, value, highlight = "text-white" }: { label: string; value: string; highlight?: string }) {
+function Metric({ label, value, highlight = "text-foreground" }: { label: string; value: string; highlight?: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-black/20 px-4 py-3">
-      <span className="text-sm text-slate-400">{label}</span>
+    <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3">
+      <span className="text-sm text-muted-foreground">{label}</span>
       <span className={`font-bold ${highlight}`}>{value}</span>
     </div>
   );
@@ -423,9 +528,11 @@ function saveResearchWorkspace(session: Session | null, workspace: ResearchWorks
 }
 
 function getProductName(product: any) {
-  const clean = product?.Clean_Name_AI || product?.clean_name_ai;
-  if (clean && clean !== "The language entered is not supported at this time.") return clean;
-  return product?.Product_Name || product?.product_name || "Unknown product";
+  if (!product || typeof product !== "object") return "Unknown product";
+  const candidate = product as Record<string, unknown>;
+  const clean = candidate.Clean_Name_AI || candidate.clean_name_ai;
+  if (clean && clean !== "The language entered is not supported at this time.") return String(clean);
+  return String(candidate.Product_Name || candidate.product_name || "Unknown product");
 }
 
 function detectResearchTask(text: string): Pick<ResearchTask, "type" | "label"> | null {
@@ -510,14 +617,15 @@ function getProductMatches(prompt: string, products: any[]) {
 
   return products
     .map((product) => {
+      const candidate = product as Record<string, unknown>;
       const searchable = [
         getProductName(product),
-        product.Category,
-        product.category,
-        product.Brand,
-        product.brand,
-        product.Store_Name,
-        product.Product_Name,
+        candidate.Category,
+        candidate.category,
+        candidate.Brand,
+        candidate.brand,
+        candidate.Store_Name,
+        candidate.Product_Name,
       ]
         .filter(Boolean)
         .join(" ")
@@ -534,11 +642,16 @@ function getProductMatches(prompt: string, products: any[]) {
 function buildProductResearchReply(matches: any[], taskLabel?: string) {
   const lines = matches.map((product, index) => {
     const name = getProductName(product);
-    const category = product.Category || product.category || "Uncategorized";
-    const price = product.Price_RM || product.Final_Price_Low || "N/A";
-    const sales = product.Sales || product.sales || "N/A";
+    const candidate = product as Record<string, unknown>;
+    const category = candidate.Category || candidate.category || "Uncategorized";
+    const price = candidate.Price_RM || candidate.Final_Price_Low || "N/A";
+    const sales = candidate.Sales || candidate.sales || "N/A";
     return `${index + 1}. ${name} | ${category} | RM ${price} | Sales ${sales}`;
   });
 
   return `${taskLabel ? `Saved request: ${taskLabel}.\n\n` : ""}I found ${matches.length} matching in-house products from your Supabase dataset:\n${lines.join("\n")}\n\nUse these as your first research set before checking external suppliers or alerts.`;
+}
+
+function createMessageId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }

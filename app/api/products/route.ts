@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const PRODUCT_TABLES = ["MYProductScout_Master", "scraped_products"] as const;
+const PRODUCT_TABLES = ["scraped_products", "MYProductScout_Master"] as const;
 
 export const dynamic = "force-dynamic";
 
@@ -65,11 +65,14 @@ async function fetchProducts(supabase: any) {
       continue;
     }
 
-    return {
-      data: response.data ?? [],
-      error: null,
-      tableName,
-    };
+    // Only return if we actually found data, otherwise fallback to the next table
+    if (response.data && response.data.length > 0) {
+      return {
+        data: response.data,
+        error: null,
+        tableName,
+      };
+    }
   }
 
   return {

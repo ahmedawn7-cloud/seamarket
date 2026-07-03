@@ -20,7 +20,7 @@ export function OpsHeader({
 
 export function OpsPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-5 shadow-xl shadow-black/10">
+    <section className="rounded-xl border border-border bg-card p-5 shadow-xl shadow-black/10">
       <h2 className="mb-4 text-lg font-bold text-white">{title}</h2>
       {children}
     </section>
@@ -40,7 +40,7 @@ export function OpsMetric({
     tone === "good" ? "text-emerald-300" : tone === "warn" ? "text-amber-300" : tone === "bad" ? "text-red-300" : "text-white";
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0d1322] p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-sm text-slate-400">{label}</p>
       <p className={`mt-3 text-2xl font-bold capitalize ${toneClass}`}>{value}</p>
     </div>
@@ -64,7 +64,7 @@ export function OpsList({ items }: { items: string[] }) {
   return (
     <div className="space-y-2">
       {items.map((item) => (
-        <div key={item} className="rounded-lg border border-slate-800 bg-black/20 px-3 py-2 text-sm text-slate-300">
+        <div key={item} className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-slate-300">
           {item}
         </div>
       ))}

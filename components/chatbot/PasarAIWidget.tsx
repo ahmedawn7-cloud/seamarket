@@ -57,7 +57,7 @@ export default function PasarAIWidget() {
     setIsLoading(true);
 
     try {
-      const response = await sendPasarAIMessage(nextMessages);
+      const response = await sendPasarAIMessage(nextMessages, "main");
       const assistantMessage: ChatMessageType = {
         id: createId("assistant"),
         role: "assistant",

@@ -6,13 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "scrape:weekly": "ts-node scripts/run-weekly-scraper.ts",
+    "scrape:due": "tsx scripts/run-due-scrapers.ts",
+    "cleaner:run": "tsx scripts/run-cleaner.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
+    "dotenv": "^17.4.2",
     "lucide-react": "^1.23.0",
     "next": "16.2.9",
+    "puppeteer": "^25.3.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -24,6 +31,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.0",
     "typescript": "^5"
   }
 }

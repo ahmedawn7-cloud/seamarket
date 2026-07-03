@@ -33,11 +33,11 @@ export default function ChatbotOpsPage() {
 
         <OpsPanel title="Provider Status">
           <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-black/20 p-3">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
               <span className="text-sm text-slate-300">Groq</span>
               <StatusPill ok={hasGroq} label={hasGroq ? "connected" : "missing"} />
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-black/20 p-3">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
               <span className="text-sm text-slate-300">Mock fallback</span>
               <StatusPill ok label="ready" />
             </div>
