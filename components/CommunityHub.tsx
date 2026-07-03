@@ -9,8 +9,9 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 const LOCAL_POSTS_KEY = "profitpilot-local-community-posts";
+const LOCAL_PROFILE_KEY = "profitpilot-local-profile";
 
-const mockPosts = [
+const mockPosts: CommunityPost[] = [
   {
     id: 1,
     author: "Sarah Lee",
@@ -54,13 +55,17 @@ const topics = [
 export default function CommunityHub({ session }: { session: Session | null }) {
   const [activeTab, setActiveTab] = useState("All");
   const [postText, setPostText] = useState("");
-  const [posts, setPosts] = useState(mockPosts);
+  const [posts, setPosts] = useState<CommunityPost[]>(mockPosts);
   const [postStatus, setPostStatus] = useState("");
+  const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null);
 
   useEffect(() => {
+    const profile = loadLocalProfile();
+    setLocalProfile(profile);
+
     const localPosts = loadLocalPosts();
     if (localPosts.length > 0) {
-      setPosts([...localPosts, ...mockPosts]);
+      setPosts([...hydrateLocalPosts(localPosts, profile), ...mockPosts]);
     }
   }, []);
 
@@ -73,8 +78,10 @@ export default function CommunityHub({ session }: { session: Session | null }) {
 
     const newPost = {
       id: Date.now(),
-      author: session?.user?.email?.split("@")[0] || "You",
-      role: "Member",
+      isMine: true,
+      author: getCommunityName(session, localProfile),
+      role: localProfile?.businessType || "Member",
+      avatarUrl: localProfile?.avatarPreview || null,
       time: "Just now",
       content,
       likes: 0,
@@ -115,9 +122,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
         <div className="space-y-6">
           <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
             <div className="flex gap-4">
-              <div className="h-10 w-10 shrink-0 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
-                Me
-              </div>
+              <Avatar author={getCommunityName(session, localProfile)} avatarUrl={localProfile?.avatarPreview || null} highlight />
               <div className="flex-1 space-y-3">
                 <input 
                   value={postText}
@@ -154,9 +159,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
               <article key={post.id} className="rounded-xl border border-slate-800 bg-[#0d1322] p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-400">
-                      {post.author.charAt(0)}
-                    </div>
+                    <Avatar author={post.author} avatarUrl={post.avatarUrl || null} />
                     <div>
                       <p className="text-sm font-bold text-white">{post.author} <span className="text-xs font-normal text-cyan-400 ml-2">{post.role}</span></p>
                       <p className="text-xs text-slate-500">{post.time}</p>
@@ -236,10 +239,39 @@ function loadLocalPosts() {
   }
 }
 
+function loadLocalProfile(): LocalProfile | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LOCAL_PROFILE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function hydrateLocalPosts(posts: CommunityPost[], profile: LocalProfile | null) {
+  return posts.map((post) =>
+    post.isMine
+      ? {
+          ...post,
+          author: profile?.displayName || post.author,
+          role: profile?.businessType || post.role,
+          avatarUrl: profile?.avatarPreview || post.avatarUrl || null,
+        }
+      : post,
+  );
+}
+
+function getCommunityName(session: Session | null, profile: LocalProfile | null) {
+  return profile?.displayName?.trim() || session?.user?.email?.split("@")[0] || "You";
+}
+
 function saveLocalPost(post: {
   id: number;
+  isMine?: boolean;
   author: string;
   role: string;
+  avatarUrl?: string | null;
   time: string;
   content: string;
   likes: number;
@@ -250,3 +282,40 @@ function saveLocalPost(post: {
   const existing = loadLocalPosts();
   localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify([post, ...existing].slice(0, 50)));
 }
+
+function Avatar({ author, avatarUrl, highlight = false }: { author: string; avatarUrl?: string | null; highlight?: boolean }) {
+  return (
+    <div
+      className={`h-10 w-10 shrink-0 overflow-hidden rounded-full ${
+        highlight ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-800 text-slate-400"
+      } flex items-center justify-center font-bold`}
+    >
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={`${author} avatar`} className="h-full w-full object-cover" />
+      ) : (
+        author.charAt(0).toUpperCase()
+      )}
+    </div>
+  );
+}
+
+type LocalProfile = {
+  displayName?: string;
+  businessType?: string;
+  country?: string;
+  avatarPreview?: string | null;
+};
+
+type CommunityPost = {
+  id: number;
+  isMine?: boolean;
+  author: string;
+  role: string;
+  avatarUrl?: string | null;
+  time: string;
+  content: string;
+  likes: number;
+  comments: number;
+  rating: number;
+  images?: string[];
+};
