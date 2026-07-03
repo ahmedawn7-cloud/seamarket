@@ -64,6 +64,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
   const [telegramChats, setTelegramChats] = useState<TelegramChat[]>([]);
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<CommunityPost | null>(null);
+  const [sharedStatus, setSharedStatus] = useState("");
 
   useEffect(() => {
     const profile = loadLocalProfile();
@@ -72,10 +73,29 @@ export default function CommunityHub({ session }: { session: Session | null }) {
     setTelegramChatId(telegram.chatId || "");
 
     const localPosts = loadLocalPosts();
-    if (localPosts.length > 0) {
-      setPosts([...hydrateLocalPosts(localPosts, profile), ...mockPosts]);
+    setPosts(mergePosts([], hydrateLocalPosts(localPosts, profile), mockPosts));
+    loadSharedPosts(profile, localPosts);
+  }, [session?.user?.id]);
+
+  async function loadSharedPosts(profile = localProfile, localPosts = loadLocalPosts()) {
+    try {
+      const response = await fetch("/api/community/posts", { cache: "no-store" });
+      const payload = await response.json();
+
+      if (!payload.ok) {
+        setSharedStatus(`Cloud community is not ready yet: ${payload.error}`);
+        setPosts(mergePosts([], hydrateLocalPosts(localPosts, profile), mockPosts));
+        return;
+      }
+
+      const cloudPosts = Array.isArray(payload.posts) ? payload.posts.map((post: any) => normalizeCloudPost(post, session?.user?.id)) : [];
+      setPosts(mergePosts(cloudPosts, hydrateLocalPosts(localPosts, profile), mockPosts));
+      setSharedStatus(cloudPosts.length > 0 ? "Showing shared Supabase community posts." : "No shared posts yet. Be the first to post.");
+    } catch (error) {
+      setSharedStatus(error instanceof Error ? `Community sync failed: ${error.message}` : "Community sync failed.");
+      setPosts(mergePosts([], hydrateLocalPosts(localPosts, profile), mockPosts));
     }
-  }, []);
+  }
 
   async function createPost() {
     const content = postText.trim();
@@ -119,6 +139,10 @@ export default function CommunityHub({ session }: { session: Session | null }) {
         ? `Saved locally. Supabase cloud save needs community_posts setup: ${error.message}`
         : "Posted and saved to Supabase.",
     );
+
+    if (!error) {
+      loadSharedPosts(localProfile);
+    }
   }
 
   async function sendTelegramTest() {
@@ -204,7 +228,9 @@ export default function CommunityHub({ session }: { session: Session | null }) {
                     Post
                   </button>
                 </div>
-                {postStatus && <p className="text-xs text-cyan-300">{postStatus}</p>}
+                {(postStatus || sharedStatus) && (
+                  <p className="text-xs text-cyan-300">{postStatus || sharedStatus}</p>
+                )}
               </div>
             </div>
           </section>
@@ -410,6 +436,36 @@ function hydrateLocalPosts(posts: CommunityPost[], profile: LocalProfile | null)
   );
 }
 
+function normalizeCloudPost(post: any, currentUserId?: string): CommunityPost {
+  return {
+    id: String(post.id || crypto.randomUUID()),
+    userId: post.userId || post.user_id || null,
+    isMine: Boolean(currentUserId && (post.userId || post.user_id) === currentUserId),
+    author: String(post.author || "Community member").slice(0, 80),
+    role: String(post.role || "Member").slice(0, 80),
+    avatarUrl: typeof post.avatarUrl === "string" ? post.avatarUrl : null,
+    time: String(post.time || "Just now").slice(0, 40),
+    content: String(post.content || "").slice(0, 1200),
+    likes: Number(post.likes) || 0,
+    comments: Number(post.comments) || 0,
+    rating: Number(post.rating) || 0,
+  };
+}
+
+function mergePosts(...groups: CommunityPost[][]) {
+  const seen = new Set<string>();
+  const merged: CommunityPost[] = [];
+
+  for (const post of groups.flat()) {
+    const key = String(post.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(post);
+  }
+
+  return merged;
+}
+
 function getCommunityName(session: Session | null, profile: LocalProfile | null) {
   return profile?.displayName?.trim() || session?.user?.email?.split("@")[0] || "You";
 }
@@ -443,7 +499,8 @@ function sanitizeLocalPost(post: any): CommunityPost | null {
   if (!post || typeof post !== "object") return null;
 
   return {
-    id: Number(post.id) || Date.now(),
+    id: typeof post.id === "string" ? post.id.slice(0, 80) : Number(post.id) || Date.now(),
+    userId: typeof post.userId === "string" ? post.userId : null,
     isMine: Boolean(post.isMine),
     author: String(post.author || "You").slice(0, 80),
     role: String(post.role || "Member").slice(0, 80),
@@ -503,7 +560,8 @@ type LocalProfile = {
 };
 
 type CommunityPost = {
-  id: number;
+  id: number | string;
+  userId?: string | null;
   isMine?: boolean;
   author: string;
   role: string;

@@ -31,6 +31,12 @@ on public.user_profiles
 for select
 using (auth.uid() = id);
 
+drop policy if exists "Public read profile cards" on public.user_profiles;
+create policy "Public read profile cards"
+on public.user_profiles
+for select
+using (true);
+
 drop policy if exists "Users insert own profile" on public.user_profiles;
 create policy "Users insert own profile"
 on public.user_profiles
