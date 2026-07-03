@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Bot, Bookmark, Calculator, CalendarDays, Edit3, MessageSquare, Scale, Send, Target, TrendingUp } from "lucide-react";
+import { Bell, Bot, Bookmark, Calculator, CalendarDays, CheckCircle2, Edit3, Send, Target } from "lucide-react";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -17,6 +17,8 @@ export default function ResearchHub({ session }: { session: Session | null }) {
   const [chatInput, setChatInput] = useState("");
   const [notes, setNotes] = useState("");
   const [savedProducts, setSavedProducts] = useState<any[]>([]);
+  const [savedNotes, setSavedNotes] = useState<SavedNote[]>([]);
+  const [researchTasks, setResearchTasks] = useState<ResearchTask[]>([]);
   const [notesStatus, setNotesStatus] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -36,23 +38,80 @@ export default function ResearchHub({ session }: { session: Session | null }) {
     const workspace = loadResearchWorkspace(session);
     setNotes(workspace.notes || "");
     setSavedProducts(Array.isArray(workspace.savedProducts) ? workspace.savedProducts : []);
+    setSavedNotes(Array.isArray(workspace.savedNotes) ? workspace.savedNotes : []);
+    setResearchTasks(Array.isArray(workspace.researchTasks) ? workspace.researchTasks : []);
   }, [session]);
 
+  function persistWorkspace(nextWorkspace: Partial<ResearchWorkspace>) {
+    const workspace = {
+      notes,
+      savedProducts,
+      savedNotes,
+      researchTasks,
+      ...nextWorkspace,
+    };
+
+    saveResearchWorkspace(session, workspace);
+  }
+
   function saveNotes(nextNotes = notes) {
-    saveResearchWorkspace(session, { notes: nextNotes, savedProducts });
+    persistWorkspace({ notes: nextNotes });
     setNotesStatus("Saved to your research workspace.");
+  }
+
+  function saveNoteSnapshot() {
+    const content = notes.trim();
+    if (!content) {
+      setNotesStatus("Write a note before saving a snapshot.");
+      return;
+    }
+
+    const nextNotes = [
+      {
+        id: Date.now(),
+        title: content.split(/\s+/).slice(0, 8).join(" "),
+        content,
+        savedAt: new Date().toISOString(),
+      },
+      ...savedNotes,
+    ].slice(0, 12);
+
+    setSavedNotes(nextNotes);
+    persistWorkspace({ notes: content, savedNotes: nextNotes });
+    setNotesStatus("Saved as a private research note.");
   }
 
   function sendMessage() {
     const text = chatInput.trim();
     if (!text) return;
+    const detectedTask = detectResearchTask(text);
+    const nextTasks: ResearchTask[] = detectedTask
+      ? [
+          {
+            id: Date.now(),
+            type: detectedTask.type,
+            label: detectedTask.label,
+            prompt: text,
+            status: "Queued" as const,
+            createdAt: new Date().toISOString(),
+          },
+          ...researchTasks,
+        ].slice(0, 20)
+      : researchTasks;
+
+    if (detectedTask) {
+      setResearchTasks(nextTasks);
+      persistWorkspace({ researchTasks: nextTasks });
+    }
 
     setMessages((current) => [
       ...current,
       { role: "user", text },
       {
         role: "assistant",
-        text: "Research path: check sales velocity, review quality, supplier cost, shipping speed, and whether the product has a clear video demonstration angle. API-powered AI can be connected here later.",
+        text: detectedTask
+          ? `Saved request: ${detectedTask.label}. I will keep this in your AI task queue so it can later trigger product monitoring, saved-product rules, or Telegram alerts once the automation layer is connected.`
+          : "Research path: check sales velocity, review quality, supplier cost, shipping speed, and whether the product has a clear video demonstration angle. API-powered AI can be connected here later.",
       },
     ]);
     setChatInput("");
@@ -118,7 +177,10 @@ export default function ResearchHub({ session }: { session: Session | null }) {
                 <Edit3 className="h-5 w-5 text-cyan-300" />
                 <h2 className="text-lg font-bold text-white">Research Notes & Docs</h2>
               </div>
-              <button onClick={() => saveNotes()} className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition">Save Notes</button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => saveNotes()} className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition">Save Draft</button>
+                <button onClick={saveNoteSnapshot} className="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300">Save Note</button>
+              </div>
             </div>
             <textarea 
               value={notes}
@@ -130,9 +192,54 @@ export default function ResearchHub({ session }: { session: Session | null }) {
               className="w-full flex-1 resize-none rounded-lg border border-slate-800 bg-[#070b16] p-4 text-sm leading-6 text-slate-300 outline-none focus:border-cyan-400/50 transition"
             />
             {notesStatus && <p className="mt-3 text-xs text-cyan-300">{notesStatus}</p>}
+            {savedNotes.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Private saved notes</p>
+                {savedNotes.slice(0, 3).map((note) => (
+                  <button
+                    key={note.id}
+                    onClick={() => setNotes(note.content)}
+                    className="block w-full rounded-lg border border-slate-800 bg-black/20 p-3 text-left transition hover:border-cyan-400/40"
+                  >
+                    <p className="line-clamp-1 text-sm font-bold text-white">{note.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{formatDate(note.savedAt)}</p>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Bell className="h-5 w-5 text-cyan-300" />
+            <div>
+              <h2 className="text-xl font-bold text-white">AI Request Queue</h2>
+              <p className="mt-1 text-xs text-slate-500">Saved tasks for monitoring, alerts, and future bot automation.</p>
+            </div>
+          </div>
+        </div>
+        {researchTasks.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {researchTasks.slice(0, 6).map((task) => (
+              <div key={task.id} className="rounded-lg border border-slate-800 bg-black/20 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-white">{task.label}</p>
+                  <span className="rounded-full bg-cyan-400/10 px-2 py-1 text-[10px] font-bold text-cyan-300">{task.status}</span>
+                </div>
+                <p className="line-clamp-2 text-xs leading-5 text-slate-400">{task.prompt}</p>
+                <p className="mt-3 text-[11px] text-slate-500">{formatDate(task.createdAt)}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-slate-700 bg-black/20 p-5 text-sm text-slate-400">
+            Try: "Monitor petshop products", "Save skincare products when available", or "Alert me when a high ROI product appears."
+          </div>
+        )}
+      </section>
 
       <section className="rounded-xl border border-slate-800 bg-[#0d1322] p-6">
         <div className="mb-5 flex items-center gap-3">
@@ -269,9 +376,19 @@ function loadResearchWorkspace(session: Session | null) {
   }
 }
 
-function saveResearchWorkspace(session: Session | null, workspace: { notes: string; savedProducts: any[] }) {
+function saveResearchWorkspace(session: Session | null, workspace: ResearchWorkspace) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(getResearchStorageKey(session), JSON.stringify(workspace));
+  try {
+    localStorage.setItem(getResearchStorageKey(session), JSON.stringify(workspace));
+  } catch {
+    const trimmedWorkspace = {
+      ...workspace,
+      savedProducts: workspace.savedProducts.slice(0, 12),
+      savedNotes: workspace.savedNotes?.slice(0, 6),
+      researchTasks: workspace.researchTasks?.slice(0, 10),
+    };
+    localStorage.setItem(getResearchStorageKey(session), JSON.stringify(trimmedWorkspace));
+  }
 }
 
 function getProductName(product: any) {
@@ -279,3 +396,74 @@ function getProductName(product: any) {
   if (clean && clean !== "The language entered is not supported at this time.") return clean;
   return product?.Product_Name || product?.product_name || "Unknown product";
 }
+
+function detectResearchTask(text: string): Pick<ResearchTask, "type" | "label"> | null {
+  const normalized = text.toLowerCase();
+  const target = extractTarget(text);
+
+  if (/(monitor|watch|track|alert|notify)/.test(normalized)) {
+    return {
+      type: "monitor",
+      label: `Monitor ${target}`,
+    };
+  }
+
+  if (/(save|bookmark|add).*(product|products|item|items|available|found)/.test(normalized)) {
+    return {
+      type: "save",
+      label: `Save matching products: ${target}`,
+    };
+  }
+
+  if (/(research|find|search|scan|look for)/.test(normalized)) {
+    return {
+      type: "research",
+      label: `Research ${target}`,
+    };
+  }
+
+  return null;
+}
+
+function extractTarget(text: string) {
+  const cleaned = text
+    .replace(/\b(please|can you|could you|i want you to|request(ed)?|ai|bot|products?|items?|when available|for me|and save them|save them|monitor|watch|track|alert|notify|research|find|search|scan|look for)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleaned || "matching products";
+}
+
+function formatDate(value: string) {
+  try {
+    return new Intl.DateTimeFormat("en-MY", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
+  } catch {
+    return "Saved";
+  }
+}
+
+type SavedNote = {
+  id: number;
+  title: string;
+  content: string;
+  savedAt: string;
+};
+
+type ResearchTask = {
+  id: number;
+  type: "monitor" | "save" | "research";
+  label: string;
+  prompt: string;
+  status: "Queued";
+  createdAt: string;
+};
+
+type ResearchWorkspace = {
+  notes: string;
+  savedProducts: any[];
+  savedNotes: SavedNote[];
+  researchTasks: ResearchTask[];
+};
