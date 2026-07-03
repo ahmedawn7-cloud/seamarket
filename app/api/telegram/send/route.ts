@@ -19,6 +19,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Telegram chat ID is required." }, { status: 400 });
     }
 
+    if (chatId.startsWith("@")) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Personal @usernames do not work for bot DMs. Message your bot first, then use the numeric chat ID. Public channels/groups can use @channelname only after the bot is added there.",
+        },
+        { status: 400 },
+      );
+    }
+
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

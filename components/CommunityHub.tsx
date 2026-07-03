@@ -61,6 +61,7 @@ export default function CommunityHub({ session }: { session: Session | null }) {
   const [postStatus, setPostStatus] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
   const [telegramStatus, setTelegramStatus] = useState("");
+  const [telegramChats, setTelegramChats] = useState<TelegramChat[]>([]);
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<CommunityPost | null>(null);
 
@@ -141,6 +142,26 @@ export default function CommunityHub({ session }: { session: Session | null }) {
     const payload = await response.json();
 
     setTelegramStatus(payload.ok ? "Telegram connected. Test alert sent." : `Telegram setup needed: ${payload.error}`);
+  }
+
+  async function findTelegramChats() {
+    setTelegramStatus("Checking recent Telegram bot messages...");
+
+    const response = await fetch("/api/telegram/updates", { cache: "no-store" });
+    const payload = await response.json();
+
+    if (!payload.ok) {
+      setTelegramStatus(`Telegram setup needed: ${payload.error}`);
+      return;
+    }
+
+    const chats = Array.isArray(payload.chats) ? payload.chats : [];
+    setTelegramChats(chats);
+    setTelegramStatus(
+      chats.length > 0
+        ? "Select your chat below, then send a test alert."
+        : "No chats found yet. Open Telegram, send any message to your bot, then click Find chat ID again.",
+    );
   }
 
   return (
@@ -255,9 +276,35 @@ export default function CommunityHub({ session }: { session: Session | null }) {
               <input
                 value={telegramChatId}
                 onChange={(event) => setTelegramChatId(event.target.value)}
-                placeholder="Telegram chat ID"
+                placeholder="Numeric Telegram chat ID"
                 className="w-full rounded-lg border border-slate-700 bg-[#070b16] px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
               />
+              <p className="text-xs leading-5 text-slate-500">
+                Use a numeric chat ID, not a personal @username. First message your Telegram bot, then click Find chat ID.
+              </p>
+              <button
+                onClick={findTelegramChats}
+                className="w-full rounded-lg border border-slate-700 bg-white/5 px-4 py-3 text-sm font-bold text-white transition hover:border-cyan-400"
+              >
+                Find chat ID
+              </button>
+              {telegramChats.length > 0 && (
+                <div className="space-y-2">
+                  {telegramChats.map((chat) => (
+                    <button
+                      key={chat.id}
+                      onClick={() => {
+                        setTelegramChatId(chat.id);
+                        localStorage.setItem(TELEGRAM_SETTINGS_KEY, JSON.stringify({ chatId: chat.id }));
+                      }}
+                      className="w-full rounded-lg border border-slate-800 bg-black/20 p-3 text-left text-xs transition hover:border-cyan-400/40"
+                    >
+                      <span className="block font-bold text-white">{chat.label}</span>
+                      <span className="mt-1 block text-slate-500">{chat.type} / {chat.id}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={sendTelegramTest}
                 className="w-full rounded-lg bg-cyan-500 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
@@ -467,4 +514,10 @@ type CommunityPost = {
   comments: number;
   rating: number;
   images?: string[];
+};
+
+type TelegramChat = {
+  id: string;
+  label: string;
+  type: string;
 };
