@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { getGroqChatReply } from "@/lib/chat/groqClient";
 import { mockPasarAI } from "@/lib/chat/mockPasarAI";
-import { pasarSystemPrompt } from "@/lib/chat/pasarSystemPrompt";
 import type { ChatApiRequest, ChatMessage } from "@/types/chat";
 
 const SERVER_TIMEOUT_MS = 15000;
+const DEFAULT_PROVIDER = "mock";
 
 export async function POST(request: Request) {
   try {
@@ -24,16 +25,14 @@ export async function POST(request: Request) {
 
     const response = await withTimeout(
       async () => {
-        // Later OpenAI connection point:
-        // 1. Send pasarSystemPrompt plus messages to the OpenAI Responses API.
-        // 2. Return the assistant text as { reply }.
-        //
-        // Later Ollama connection point:
-        // 1. POST pasarSystemPrompt plus messages to your local/hosted Ollama endpoint.
-        // 2. Return the model text as { reply }.
-        //
-        // For now, this keeps the API contract real while the intelligence remains safe mock logic.
-        void pasarSystemPrompt;
+        const provider = (process.env.AI_PROVIDER || DEFAULT_PROVIDER).trim().toLowerCase();
+
+        if (provider === "groq") {
+          return getGroqChatReply(messages);
+        }
+
+        // Later OpenAI/Ollama connection point:
+        // Add another provider branch here, keeping the same { reply } API contract.
         const mockReply = await mockPasarAI(latestUserMessage.content);
         return mockReply.content;
       },
