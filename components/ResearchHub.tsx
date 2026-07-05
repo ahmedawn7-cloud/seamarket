@@ -6,6 +6,7 @@ import { Bell, Bot, Bookmark, Calculator, CalendarDays, Edit3, FilePlus2, Packag
 import Image from "next/image";
 import { sendPasarAIMessage } from "@/lib/chat/chatClient";
 import { getBrowserSupabaseClient } from "@/lib/supabase/browserClient";
+import SeasonalMiniDashboard from "@/components/seasonal/SeasonalMiniDashboard";
 import type { ChatMessage } from "@/types/chat";
 
 const supabase = getBrowserSupabaseClient();
@@ -312,6 +313,8 @@ export default function ResearchHub({
         {workspaceLoading && <p className="mt-3 text-xs text-cyan-300">Loading Supabase research workspace...</p>}
         {workspaceStatus && <p className="mt-3 max-w-3xl text-xs leading-5 text-cyan-300">{workspaceStatus}</p>}
       </div>
+
+      <SeasonalMiniDashboard onResearch={(category) => setChatInput(`Please analyze the market opportunity for ${category} in Malaysia.`)} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
         <div className="flex h-[500px] flex-col rounded-xl border border-border bg-card p-5">

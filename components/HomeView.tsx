@@ -18,6 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import WaitlistForm from "@/components/WaitlistForm";
+import SeasonalSalesRadar from "@/components/seasonal/SeasonalSalesRadar";
 
 const VIDEO_URLS = [
   "https://saxtrrxaaahextpfskuq.supabase.co/storage/v1/object/public/assets/AliExpress_to_Shopee_transition_202606200115.mp4",
@@ -110,78 +111,43 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {overviewStats.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div key={stat.label} className="rounded-xl border border-border bg-card p-4">
+                <div key={stat.label} className="rounded-xl border border-border bg-card p-5 transition-colors hover:border-cyan-400/30">
                   <Icon className="mb-3 h-5 w-5 text-cyan-300" />
-                  <p className="text-[11px] text-slate-500">{stat.label}</p>
-                  <p className="mt-1 text-2xl font-bold text-foreground">{stat.value}</p>
-                  <p className="mt-1 text-xs text-slate-500">{stat.hint}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{stat.label}</p>
+                  <p className="mt-2 text-2xl font-bold text-foreground">{stat.value}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{stat.hint}</p>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-2xl shadow-black/30">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">
-                  Today's market overview
-                </p>
-                <h2 className="mt-2 text-2xl font-bold text-foreground">Live commercial signals</h2>
-              </div>
-              <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
-                Live
-              </span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {marketSnapshot.slice(0, 4).map((item) => (
-                <div key={item.label} className="rounded-lg border border-border bg-muted/50 p-4">
-                  <p className="text-xs text-slate-500">{item.label}</p>
-                  <p className="mt-2 text-sm font-bold text-foreground">{item.value}</p>
-                  <p className="mt-1 text-xs font-bold text-cyan-300">{item.change}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-5">
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                Trending categories
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {trendingCategories.map((category) => (
-                  <span key={category} className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
-                    {category}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <section id="demo-videos" className="grid grid-cols-3 gap-3">
-            {VIDEO_URLS.map((url, index) => (
-              <div key={url} className="h-40 overflow-hidden rounded-xl border border-border bg-black shadow-xl transition hover:border-cyan-400/50 md:h-56">
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className={`h-full w-full object-cover ${
-                    index === 1 ? "scale-125" : "scale-110"
-                  }`}
-                >
-                  <source src={url} type="video/mp4" />
-                </video>
-              </div>
-            ))}
-          </section>
+        <div className="relative">
+          <SeasonalSalesRadar onExplore={onExploreProducts} />
         </div>
+      </section>
+
+      <section id="demo-videos" className="mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-3">
+        {VIDEO_URLS.map((url, index) => (
+          <div key={url} className="h-48 overflow-hidden rounded-xl border border-border bg-black shadow-xl transition hover:border-cyan-400/50 md:h-64">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              className={`h-full w-full object-cover ${
+                index === 1 ? "scale-125" : "scale-110"
+              }`}
+            >
+              <source src={url} type="video/mp4" />
+            </video>
+          </div>
+        ))}
       </section>
 
       <section className="space-y-6">

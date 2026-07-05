@@ -15,6 +15,12 @@ import UserDashboard from "@/components/UserDashboard";
 import AuthPanel, { getAccessPlan, type AccessPlan } from "@/components/AuthPanel";
 import AccessGate from "@/components/AccessGate";
 
+import PublicHeader from "@/components/nav/PublicHeader";
+import AppSidebar from "@/components/nav/AppSidebar";
+import AppHeader from "@/components/nav/AppHeader";
+import MobileDrawer from "@/components/nav/MobileDrawer";
+import FeaturesPage from "@/components/FeaturesPage";
+
 const LOGO_URL = "/profit-pilot-logo.png";
 const supabase = getBrowserSupabaseClient();
 
@@ -36,7 +42,9 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   const [session, setSession] = useState<Session | null>(null);
   const [profilePlan, setProfilePlan] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [comfortTheme, setComfortTheme] = useState(false);
+  const [sidebarNotifications, setSidebarNotifications] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -120,6 +128,40 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     if (typeof window === "undefined") return;
     setComfortTheme(localStorage.getItem("profitpilot-comfort-theme") === "true");
   }, []);
+
+  // Load persisted sidebar notification counts from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem("pp-sidebar-notifs");
+      if (stored) setSidebarNotifications(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  // Seed initial notifications for demo (Community + Products) once per session
+  useEffect(() => {
+    if (!session?.user) return;
+    setSidebarNotifications((prev) => {
+      // Only seed if counts not yet recorded
+      const next = { ...prev };
+      if (next["Community"] === undefined) next["Community"] = 3;
+      if (next["Products"] === undefined)  next["Products"]  = safeProducts.length > 0 ? Math.min(safeProducts.length, 5) : 0;
+      try { localStorage.setItem("pp-sidebar-notifs", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user]);
+
+  // Clear notification count for a tab when the user visits it
+  useEffect(() => {
+    if (!sidebarNotifications[activeTab]) return;
+    setSidebarNotifications((prev) => {
+      const next = { ...prev, [activeTab]: 0 };
+      try { localStorage.setItem("pp-sidebar-notifs", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const safeProducts = useMemo(() => {
     return products.filter((p) => {
@@ -211,17 +253,12 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     });
   }
 
-  const tabs = [
-    { id: "Home", icon: Home, label: "Home" },
-    { id: "Products", icon: PackageSearch, label: "Products" },
-    { id: "Research", icon: Beaker, label: "Research Hub" },
-    { id: "Sourcing", icon: Truck, label: "Sourcing" },
-    { id: "Community", icon: Users, label: "Community" },
-    { id: "Profile", icon: User, label: "User Dashboard" },
-  ];
+  // Check if current user is an admin
+  const isAdmin = session?.user?.email === "admin@profitpilot.ai"; // Stub logic for admin check
+  const isLoggedIn = !!session?.user;
 
   return (
-    <div className={`theme-shell relative z-10 min-h-screen ${comfortTheme ? "comfort-theme" : "dark-theme"}`}>
+    <div className={`theme-shell relative z-10 flex min-h-screen ${comfortTheme ? "comfort-theme" : "dark-theme"}`}>
       <div className="fixed inset-0 -z-10 bg-[var(--background)]">
         <div
           className={`absolute inset-0 ${
@@ -232,109 +269,60 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
         />
       </div>
 
-      <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="sticky top-0 z-50 border-b backdrop-blur-xl">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex min-h-16 items-center justify-between gap-4 py-3">
-              <button onClick={() => setActiveTab("Home")} className="flex shrink-0 items-center gap-3 text-left">
-                <Image src={LOGO_URL} alt="Profit Pilot AI" width={40} height={40} className="h-10 w-10 object-contain" />
-                <span className="hidden text-xl font-bold tracking-tight text-foreground sm:block">
-                  Profit Pilot AI
-                </span>
-              </button>
+      <MobileDrawer
+        isOpen={isMobileNavOpen}
+        onClose={() => setIsMobileNavOpen(false)}
+        isLoggedIn={isLoggedIn}
+        isAdmin={isAdmin}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        accessPlan={accessPlan as AccessPlan}
+        onLogin={() => setIsAuthOpen(true)}
+        onSignOut={handleSignOut}
+      />
 
-              <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto lg:flex">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
+      {isLoggedIn ? (
+        <AppSidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isAdmin={isAdmin}
+          accessPlan={accessPlan as AccessPlan}
+          onSignOut={handleSignOut}
+          notificationCounts={sidebarNotifications}
+        />
+      ) : null}
 
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium leading-none transition ${
-                        isActive
-                          ? "border border-cyan-400/30 bg-cyan-400/10 text-cyan-200 shadow-lg shadow-cyan-500/10"
-                          : "text-muted-foreground hover:bg-white/5 hover:text-slate-100"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="whitespace-nowrap">{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
+      <div className="flex flex-1 flex-col overflow-x-hidden">
+        {isLoggedIn ? (
+          <AppHeader
+            activeTab={activeTab}
+            comfortTheme={comfortTheme}
+            onToggleTheme={toggleComfortTheme}
+            onOpenMobileNav={() => setIsMobileNavOpen(true)}
+            session={session}
+            accessPlan={accessPlan as AccessPlan}
+            setActiveTab={setActiveTab}
+            onSignOut={handleSignOut}
+          />
+        ) : (
+          <PublicHeader
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            onLogin={() => setIsAuthOpen(true)}
+            onOpenMobileNav={() => setIsMobileNavOpen(true)}
+          />
+        )}
 
-              <div className="hidden shrink-0 items-center gap-2 sm:flex">
-                <button
-                  onClick={toggleComfortTheme}
-                  className="rounded-full border bg-transparent p-2 text-cyan-300 transition hover:bg-cyan-400/10"
-                  aria-label="Toggle comfort theme"
-                  title={comfortTheme ? "Switch to dark intelligence theme" : "Switch to light comfort theme"}
-                >
-                  <Sun className="h-4 w-4" />
-                </button>
-                {session?.user ? (
-                  <>
-                    <button
-                      onClick={() => setActiveTab("Profile")}
-                      className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-300"
-                    >
-                      {accessPlan === "pro" ? "Pro Access" : "Registered"}
-                    </button>
-                    <button
-                      onClick={handleSignOut}
-                      className="rounded-full border border-border bg-transparent p-2 text-muted-foreground transition hover:text-foreground"
-                      aria-label="Sign out"
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => setIsAuthOpen(true)}
-                    className="rounded-full border border-cyan-400/30 bg-transparent px-5 py-2 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/10"
-                  >
-                    Login / Sign Up
-                  </button>
-                )}
-              </div>
-            </div>
+        {/* Features page: full-width, no constrained padding */}
+        {activeTab === "Features" && (
+          <FeaturesPage
+            onLogin={() => setIsAuthOpen(true)}
+            onViewDemo={() => setActiveTab("Products")}
+          />
+        )}
 
-            <nav className="flex gap-2 overflow-x-auto pb-3 lg:hidden">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium leading-none transition ${
-                      isActive
-                        ? "border border-cyan-400/30 bg-cyan-400/10 text-cyan-200"
-                        : "text-muted-foreground hover:bg-white/5 hover:text-slate-100"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="whitespace-nowrap">{tab.label}</span>
-                  </button>
-                );
-              })}
-              {!session?.user && (
-                <button
-                  onClick={() => setIsAuthOpen(true)}
-                  className="flex shrink-0 items-center gap-2 rounded-full border border-cyan-400/30 px-4 py-2 text-sm font-bold text-cyan-300"
-                >
-                  Login
-                </button>
-              )}
-            </nav>
-          </div>
-        </header>
-
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-          {activeTab === "Home" && <HomeView onExploreProducts={() => setActiveTab("Products")} />}
+        <main className={`mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8 ${activeTab === "Features" ? "hidden" : ""}`}>
+          {(activeTab === "Home" || activeTab === "Dashboard") && <HomeView onExploreProducts={() => setActiveTab("Products")} />}
 
           {activeTab === "Products" && (
             <section className="space-y-6">
@@ -548,6 +536,72 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
             >
               <UserDashboard session={session} accessPlan={accessPlan} />
             </AccessGate>
+          )}
+          {activeTab === "Settings" && (
+            <AccessGate
+              plan={accessPlan}
+              required="registered"
+              title="Settings"
+              description="Configure your intelligence dashboard."
+              onLogin={() => setIsAuthOpen(true)}
+            >
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
+                <p>Settings coming soon in a future update.</p>
+              </div>
+            </AccessGate>
+          )}
+
+          {activeTab === "Billing" && (
+            <AccessGate
+              plan={accessPlan}
+              required="registered"
+              title="Billing & Payment"
+              description="Manage your payment methods and invoice history."
+              onLogin={() => setIsAuthOpen(true)}
+            >
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
+                <p>Billing and payment management coming soon.</p>
+              </div>
+            </AccessGate>
+          )}
+
+          {activeTab === "Subscription" && (
+            <AccessGate
+              plan={accessPlan}
+              required="registered"
+              title="Subscription Plan"
+              description="Manage your SaaS subscription and limits."
+              onLogin={() => setIsAuthOpen(true)}
+            >
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
+                <p>Subscription management coming soon.</p>
+              </div>
+            </AccessGate>
+          )}
+
+          {activeTab === "Analytics" && (
+            <AccessGate
+              plan={accessPlan}
+              required="pro"
+              title="Advanced Analytics"
+              description="Pro users get full access to market analytics and forecasting."
+              onLogin={() => setIsAuthOpen(true)}
+            >
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
+                <p>Analytics coming soon in a future update.</p>
+              </div>
+            </AccessGate>
+          )}
+
+          {["AdminDashboard", "DataOps", "ProductQueue", "CommunityApprovals", "AILogs", "UserManagement"].includes(activeTab) && (
+            <div className="rounded-xl border border-border bg-card p-8 text-center">
+              <h2 className="text-xl font-bold text-foreground">Admin Portal</h2>
+              {isAdmin ? (
+                <p className="mt-2 text-muted-foreground">Authorized access confirmed. Module: {activeTab}</p>
+              ) : (
+                <p className="mt-2 text-red-400">Unauthorized access. This incident will be reported.</p>
+              )}
+            </div>
           )}
         </main>
 
