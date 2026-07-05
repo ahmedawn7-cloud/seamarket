@@ -76,7 +76,7 @@ export default function HomeView({ onExploreProducts }: { onExploreProducts?: ()
   }
 
   return (
-    <div className="space-y-20 pb-20">
+    <div className="dark-theme space-y-20 pb-20">
       <section className="grid min-h-[calc(100vh-8rem)] items-center gap-8 py-8 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-7">
           <div className="space-y-5">
