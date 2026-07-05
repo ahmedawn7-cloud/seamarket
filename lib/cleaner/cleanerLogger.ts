@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClient } from "@/lib/supabase/serviceRoleClient";
 
 export interface CleanerRunSummary {
   status: "success" | "partial" | "failed";
@@ -13,9 +13,7 @@ export interface CleanerRunSummary {
 }
 
 export async function logCleanerRun(runId: string, summary: CleanerRunSummary) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getServiceSupabaseClient();
 
   const { error } = await supabase
     .from("cleaner_runs")
@@ -31,9 +29,7 @@ export async function logCleanerRun(runId: string, summary: CleanerRunSummary) {
 }
 
 export async function createCleanerRunLog(limit: number): Promise<string> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getServiceSupabaseClient();
 
   const { data, error } = await supabase
     .from("cleaner_runs")

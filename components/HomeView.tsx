@@ -26,21 +26,21 @@ const VIDEO_URLS = [
 ];
 
 const overviewStats = [
-  { label: "Products tracked today", value: "999", hint: "Live product rows", icon: Database },
-  { label: "Revenue monitored", value: "RM 3.2M", hint: "Estimated marketplace sales", icon: BarChart3 },
+  { label: "Products tracked today", value: "Live", hint: "Loaded in Product Radar", icon: Database },
+  { label: "Revenue monitored", value: "Pending", hint: "Requires Revenue_Calc coverage", icon: BarChart3 },
   { label: "Marketplaces covered", value: "3", hint: "TikTok Shop, Shopee, Lazada", icon: Globe2 },
-  { label: "AI alerts generated", value: "128", hint: "Trend, margin, and risk signals", icon: Bell },
+  { label: "AI alerts generated", value: "Pending", hint: "Requires alert history", icon: Bell },
 ];
 
 const trendingCategories = ["Beauty", "Modest fashion", "Home tools", "Fitness", "Plant care"];
 
 const marketSnapshot = [
-  { label: "Top gaining category", value: "Plant Care & Support", change: "+42.8%" },
-  { label: "Fastest growing product", value: "Kalsium Ouli Seeds", change: "+34,212 sales" },
-  { label: "Highest ROI niche", value: "Portable beauty tools", change: "3.4x ROI" },
-  { label: "Most searched keyword", value: "TikTok viral Malaysia", change: "+18.5%" },
-  { label: "Most profitable category", value: "Skincare bundles", change: "RM 41 margin" },
-  { label: "Platform activity", value: "TikTok Shop leads", change: "71% of signals" },
+  { label: "Top gaining category", value: "Plant Care & Support", change: "From live product rows" },
+  { label: "Fastest growing product", value: "Kalsium Ouli Seeds", change: "From sales field" },
+  { label: "Highest ROI niche", value: "Data pending", change: "Needs ROI_Calc coverage" },
+  { label: "Most searched keyword", value: "Data pending", change: "Needs search logs" },
+  { label: "Most profitable category", value: "Data pending", change: "Needs Net_Margin_Calc" },
+  { label: "Platform activity", value: "Connected", change: "Based on source URLs" },
 ];
 
 const timeline = [
@@ -54,11 +54,11 @@ const timeline = [
 ];
 
 const proofStats = [
-  { label: "Case studies", value: "18" },
-  { label: "Revenue generated", value: "RM 8.4M" },
-  { label: "Products tracked", value: "999+" },
-  { label: "Countries", value: "6" },
-  { label: "Users", value: "1,200+" },
+  { label: "Case studies", value: "Pending" },
+  { label: "Revenue generated", value: "Pending" },
+  { label: "Products tracked", value: "Live" },
+  { label: "Countries", value: "Malaysia-first" },
+  { label: "Users", value: "Waitlist" },
 ];
 
 const pricingRows = [

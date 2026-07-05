@@ -13,7 +13,7 @@ $$ LANGUAGE plpgsql;
 
 -- Table: cleaned_products
 CREATE TABLE IF NOT EXISTS public.cleaned_products (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   scraped_product_id UUID REFERENCES public.scraped_products(id) ON DELETE CASCADE,
   internal_product_id TEXT DEFAULT generate_pp_product_id(),
   platform TEXT,
@@ -68,7 +68,7 @@ USING (true);
 
 -- Table: cleaner_runs
 CREATE TABLE IF NOT EXISTS public.cleaner_runs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   started_at TIMESTAMPTZ DEFAULT NOW(),
   finished_at TIMESTAMPTZ,
   status TEXT,

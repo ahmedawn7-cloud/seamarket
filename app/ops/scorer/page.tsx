@@ -12,6 +12,7 @@ export default function ScorerDashboard() {
   const [limit, setLimit] = useState(50);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
+  const [runGate, setRunGate] = useState<any>(null);
   
   // Filters
   const [filterRec, setFilterRec] = useState("all");
@@ -44,9 +45,17 @@ export default function ScorerDashboard() {
   useEffect(() => {
     fetchStatus();
     fetchScores();
+    fetch("/api/ops/health", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((payload) => setRunGate(payload.botReadiness?.find((bot: any) => bot.bot === "scorer") || null))
+      .catch(() => setRunGate({ ready: false, status: "api_failing" }));
   }, []);
 
   const runScorer = async () => {
+    if (!runGate?.ready) {
+      setStatusMsg(getRunGateMessage(runGate));
+      return;
+    }
     setRunning(true);
     setStatusMsg(`Starting Scoring Bot (Limit: ${limit})...`);
     try {
@@ -129,12 +138,17 @@ export default function ScorerDashboard() {
           <div className="mt-6 space-y-4">
             <button 
               onClick={runScorer}
-              disabled={running}
+              disabled={running || !runGate?.ready}
               className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition disabled:opacity-50"
             >
               {running ? <Activity className="animate-spin h-5 w-5" /> : <Play className="h-5 w-5" />}
               {running ? "Scoring..." : "Run Scorer Now"}
             </button>
+            {!runGate?.ready && (
+              <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-300">
+                {getRunGateMessage(runGate)}
+              </p>
+            )}
             
             {statusMsg && (
               <div className="p-3 bg-muted rounded-lg border border-border text-sm break-words">
@@ -303,4 +317,12 @@ export default function ScorerDashboard() {
       </div>
     </div>
   );
+}
+
+function getRunGateMessage(gate: any) {
+  if (!gate) return "API failing: readiness check is still loading or unavailable.";
+  if (gate.status === "missing_environment_variable") return `Missing environment variable: ${gate.missingEnv?.join(", ") || "required bot secret"}.`;
+  if (gate.status === "missing_table_or_column") return `Missing table/column: ${gate.missingTables?.join(", ") || "required bot schema"}.`;
+  if (gate.status === "demo_adapter_only") return "Demo adapter data — real marketplace connection not active yet.";
+  return "API failing: bot is not ready to run.";
 }

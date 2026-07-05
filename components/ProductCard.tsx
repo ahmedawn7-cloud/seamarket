@@ -60,11 +60,13 @@ export default function ProductCard({ product, onQuickView, onPreview }: Product
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] text-slate-500">Revenue (Est.)</span>
-            <span className="text-xs font-bold text-foreground">RM 61K</span>
+            <span className="text-xs font-bold text-foreground">{details.revenue}</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] text-slate-500">Margin</span>
-            <span className="text-xs font-bold text-emerald-400">34%</span>
+            <span className={`text-xs font-bold ${details.margin === "Data pending" ? "text-muted-foreground" : "text-emerald-400"}`}>
+              {details.margin}
+            </span>
           </div>
         </div>
 
@@ -107,6 +109,8 @@ function normalizeProduct(product: any) {
     trendRank: readField(product, ["trend_rank", "Trend_Rank", "Internal_Rank", "internal_rank"]) ?? "N/A",
     price: formatCurrency(readField(product, ["price", "Price_RM", "price_rm", "Price", "Final_Price_Low"])),
     sales: formatNumber(readField(product, ["sales", "Sales"])),
+    revenue: formatCurrency(readField(product, ["revenue_calc", "Revenue_Calc", "revenue", "Revenue"])),
+    margin: formatPercent(readField(product, ["net_margin_calc", "Net_Margin_Calc", "margin", "Margin"])),
     reviews: formatNumber(readField(product, ["review_count", "Review_Count"])),
     rating: readField(product, ["rating_score", "Rating_Score"]) ?? "N/A",
   };
@@ -122,6 +126,12 @@ function formatNumber(value: any) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "N/A";
   return Intl.NumberFormat("en-MY").format(number);
+}
+
+function formatPercent(value: any) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "Data pending";
+  return `${number.toFixed(1)}%`;
 }
 
 function getProductPlatform(product: any) {
@@ -158,13 +168,4 @@ function readField(product: any, fieldNames: string[]) {
   }
 
   return undefined;
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-muted/50 px-2 py-3">
-      <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-1 truncate text-xs font-bold text-foreground">{value}</p>
-    </div>
-  );
 }

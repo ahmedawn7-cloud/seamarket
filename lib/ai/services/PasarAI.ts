@@ -1,5 +1,5 @@
-import { AIProvider, ChatMessage } from "../providers/AIProvider";
-import { OllamaProvider } from "../providers/OllamaProvider";
+import { ChatMessage } from "../providers/AIProvider";
+import { AIRouter } from "../AIRouter";
 import { detectIntent, DetectedIntent } from "../rag/intentDetector";
 import { executeDatabaseSearch } from "../rag/databaseSearch";
 import { buildContextString } from "../rag/contextBuilder";
@@ -10,11 +10,10 @@ import { loadConversation, saveMessage, createConversation } from "./conversatio
 import { logChatMetrics } from "./chatLogger";
 
 export class PasarAIEngine {
-  private provider: AIProvider;
+  private botName: string;
 
-  constructor(provider?: AIProvider) {
-    // Default to Ollama, can swap to OpenAI/Claude later
-    this.provider = provider || new OllamaProvider();
+  constructor(botName: string = "Research Hub Chatbot") {
+    this.botName = botName;
   }
 
   async processRequest(
@@ -36,7 +35,7 @@ export class PasarAIEngine {
       const history = await loadConversation(currentConvId);
 
       // 2. Intent Detection
-      intent = await detectIntent(userMessage, this.provider);
+      intent = await detectIntent(userMessage, this.botName);
 
       // 3. Early Exit for Unsupported Domains
       if (intent === "unsupported") {
@@ -79,7 +78,12 @@ export class PasarAIEngine {
       providerMessages.push({ role: "user", content: userMessage });
 
       // 6. Generation
-      const aiResponse = await this.provider.chat(providerMessages);
+      const aiResult = await AIRouter.execute({
+        botName: this.botName,
+        messages: providerMessages,
+        requestType: "chat"
+      });
+      const aiResponse = aiResult.response;
       
       // 7. Parsing Output
       const parsed = parseLlmResponse(aiResponse.content, formattedSources);
@@ -87,14 +91,14 @@ export class PasarAIEngine {
       // 8. Save to Memory
       await saveMessage(currentConvId, "user", userMessage, intent);
       await saveMessage(currentConvId, "assistant", aiResponse.content, intent, formattedSources, {
-        provider: this.provider.name,
+        provider: aiResult.providerUsed,
         model: aiResponse.model,
         usage: aiResponse.usage,
         confidence
       });
 
       // 9. Logging
-      await logChatMetrics(this.provider.name, aiResponse.model, intent, Date.now() - startTime, true);
+      await logChatMetrics(aiResult.providerUsed, aiResponse.model, intent, Date.now() - startTime, true);
 
       return {
         conversationId: currentConvId,
@@ -104,7 +108,7 @@ export class PasarAIEngine {
       };
 
     } catch (error: any) {
-      await logChatMetrics(this.provider.name, "unknown", intent, Date.now() - startTime, false, error.message);
+      await logChatMetrics("AIRouter", "unknown", intent, Date.now() - startTime, false, error.message);
       throw error;
     }
   }

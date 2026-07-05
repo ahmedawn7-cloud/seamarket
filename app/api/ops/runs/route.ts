@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          error: error.message,
+          error: "Service unavailable or feature not configured.",
           code: error.code,
           hint: "Run SCRAPER_BOT_SETUP.sql in Supabase if scraper_runs does not exist.",
         },
@@ -55,3 +55,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

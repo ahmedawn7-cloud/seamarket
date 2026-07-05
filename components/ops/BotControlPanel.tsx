@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Database, Play, RefreshCw, Rocket } from "lucide-react";
 import { OpsList, OpsPanel, StatusPill } from "@/components/ops/OpsPrimitives";
 
@@ -26,7 +26,31 @@ export default function BotControlPanel({
   const [confirm, setConfirm] = useState("");
   const [status, setStatus] = useState("");
   const [diagnostic, setDiagnostic] = useState<any>(null);
+  const [readiness, setReadiness] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadReadiness() {
+      const payload = await getJson("/api/ops/health");
+      if (!isMounted) return;
+      setReadiness(payload);
+    }
+
+    loadReadiness();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const botGate = useMemo(() => {
+    const key = mode === "research" ? "researcher" : mode;
+    return readiness?.botReadiness?.find((bot: any) => bot.bot === key) || null;
+  }, [mode, readiness]);
+  const gateBlocksRun = !botGate?.ready;
+  const gateMessage = getGateMessage(botGate);
 
   async function queueRun() {
     setBusy(true);
@@ -121,15 +145,21 @@ export default function BotControlPanel({
           <Field label="Target / limit rows" value={targetRows} onChange={setTargetRows} type="number" />
 
           <div className="grid gap-3">
-            <button onClick={queueRun} disabled={busy} className="ops-action">
+            <button onClick={queueRun} disabled={busy || gateBlocksRun} className="ops-action disabled:cursor-not-allowed disabled:opacity-50">
               <Play className="h-4 w-4" />
               Queue bot run
             </button>
-            <button onClick={evaluateTable} disabled={busy} className="ops-action-secondary">
+            <button onClick={evaluateTable} disabled={busy || !readiness?.database?.connected} className="ops-action-secondary disabled:cursor-not-allowed disabled:opacity-50">
               <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} />
               Evaluate selected table
             </button>
           </div>
+
+          {gateMessage && (
+            <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-200">
+              {gateMessage}
+            </div>
+          )}
 
           <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4">
             <div className="flex items-center gap-2 text-amber-200">
@@ -145,7 +175,7 @@ export default function BotControlPanel({
               placeholder="Type PROMOTE"
               className="ops-input mt-3"
             />
-            <button onClick={promoteToMaster} disabled={busy || confirm !== "PROMOTE"} className="ops-danger mt-3">
+            <button onClick={promoteToMaster} disabled={busy || confirm !== "PROMOTE" || !readiness?.database?.connected} className="ops-danger mt-3 disabled:cursor-not-allowed disabled:opacity-50">
               <Rocket className="h-4 w-4" />
               Push staged products to master
             </button>
@@ -225,4 +255,28 @@ async function postJson(url: string, body: any) {
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Request failed." };
   }
+}
+
+async function getJson(url: string) {
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    return await response.json();
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Readiness request failed." };
+  }
+}
+
+function getGateMessage(botGate: any) {
+  if (!botGate) return "API failing: bot readiness could not be loaded yet.";
+  if (botGate.status === "missing_environment_variable") {
+    return `Missing environment variable: ${botGate.missingEnv?.join(", ") || "required bot secret"}.`;
+  }
+  if (botGate.status === "missing_table_or_column") {
+    return `Missing table/column: ${botGate.missingTables?.join(", ") || "required bot schema"}.`;
+  }
+  if (botGate.status === "demo_adapter_only") {
+    return "Demo adapter data — real marketplace connection not active yet.";
+  }
+  if (!botGate.ready) return "API failing: bot is not ready to run.";
+  return "";
 }

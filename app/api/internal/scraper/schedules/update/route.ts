@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { scraperConfig } from "@/lib/scraper/config/scraperConfig";
-import { createClient } from "@supabase/supabase-js";
 import { calculateNextRun } from "@/lib/scraper/core/scheduler";
+import { getServiceSupabaseClientOrError } from "@/lib/supabase/serverClient";
 
 export async function POST(request: Request) {
   try {
@@ -28,9 +28,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { supabase, error: configError } = getServiceSupabaseClientOrError();
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: configError }, { status: 503 });
+    }
 
     const { data, error } = await supabase
       .from("scraper_schedules")
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
     if (error) throw error;
     return NextResponse.json({ success: true, schedule: data });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable or feature not configured." }, { status: 500 });
   }
 }
+

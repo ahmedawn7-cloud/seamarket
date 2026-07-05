@@ -1,33 +1,22 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClientOrError } from "@/lib/supabase/serverClient";
 
-const PRODUCT_TABLES = ["scraped_products", "MYProductScout_Master"] as const;
+const PRODUCT_TABLES = ["MYProductScout_Master", "scraped_products"] as const;
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  if (!supabaseUrl || !supabaseKey) {
+  const { supabase, error: configError } = getServiceSupabaseClientOrError();
+  if (!supabase) {
     return NextResponse.json(
       {
         ok: false,
         products: [],
-        error: "Missing Supabase configuration.",
+        error: configError,
       },
-      { status: 500 },
+      { status: 503 },
     );
   }
-
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
 
   const { data, error, tableName } = await fetchProducts(supabase);
 
@@ -37,7 +26,7 @@ export async function GET() {
         ok: false,
         products: [],
         tableName,
-        error: error.message,
+        error: "Service unavailable or feature not configured.",
       },
       { status: 500 },
     );
@@ -56,6 +45,7 @@ export async function GET() {
 
 async function fetchProducts(supabase: any) {
   let lastError: { message: string } | null = null;
+  const candidates: Array<{ data: any[]; error: null; tableName: string; quality: number }> = [];
 
   for (const tableName of PRODUCT_TABLES) {
     const response = await supabase.from(tableName).select("*").limit(500);
@@ -65,14 +55,24 @@ async function fetchProducts(supabase: any) {
       continue;
     }
 
-    // Only return if we actually found data, otherwise fallback to the next table
-    if (response.data && response.data.length > 0) {
-      return {
-        data: response.data,
+    const rows = Array.isArray(response.data) ? response.data : [];
+    if (rows.length > 0) {
+      candidates.push({
+        data: rows,
         error: null,
         tableName,
-      };
+        quality: scoreTableRows(rows, tableName),
+      });
     }
+  }
+
+  if (candidates.length > 0) {
+    const best = [...candidates].sort((left, right) => right.quality - left.quality)[0];
+    return {
+      data: best.data.filter((row) => !isDemoProductRow(row)),
+      error: null,
+      tableName: best.tableName,
+    };
   }
 
   return {
@@ -96,10 +96,7 @@ function getSortScore(product: any) {
 function normalizeProductRow(product: any) {
   const productName = String(readField(product, ["Product_Name", "product_name"]) || "Unknown product");
   const cleanName = readField(product, ["Clean_Name_AI", "clean_name_ai"]);
-  const usableCleanName =
-    cleanName && cleanName !== "The language entered is not supported at this time."
-      ? String(cleanName)
-      : productName;
+  const usableCleanName = isUsableCleanName(cleanName) ? String(cleanName) : productName;
   const productUrl = String(readField(product, ["Product_URL", "product_url"]) || "");
   const imageUrl = String(readField(product, ["Image_URL", "image_url"]) || "");
 
@@ -127,6 +124,48 @@ function normalizeProductRow(product: any) {
       readField(product, ["Shipping_Location", "shipping_location", "Shipping_Location_1"]) || "",
     variant_count: readField(product, ["Variant_Count", "variant_count"]) ?? null,
   };
+}
+
+function isUsableCleanName(value: unknown) {
+  const text = String(value || "").trim();
+  if (!text) return false;
+
+  const blockedStarts = [
+    "The language entered is not supported",
+    "I do not have",
+    "I do not have enough information",
+    "Please provide",
+  ];
+
+  return !blockedStarts.some((phrase) => text.startsWith(phrase));
+}
+
+function scoreTableRows(rows: any[], tableName: string) {
+  const scoredRows = rows.slice(0, 100);
+  let score = tableName === "MYProductScout_Master" ? 1000 : 0;
+
+  for (const row of scoredRows) {
+    if (!isDemoProductRow(row)) score += 25;
+    if (readField(row, ["Product_Name", "product_name"])) score += 8;
+    if (readField(row, ["Price_RM", "price", "Final_Price_Low"])) score += 8;
+    if (readField(row, ["Sales", "sales"])) score += 8;
+    if (readField(row, ["Rank", "rank", "Internal_Rank", "internal_rank"])) score += 6;
+    if (readField(row, ["Image_URL", "image_url"])) score += 4;
+  }
+
+  return score;
+}
+
+function isDemoProductRow(product: any) {
+  const productUrl = String(readField(product, ["Product_URL", "product_url"]) || "");
+  const imageUrl = String(readField(product, ["Image_URL", "image_url"]) || "");
+  const productName = String(readField(product, ["Product_Name", "product_name", "Clean_Name_AI", "clean_name_ai"]) || "");
+
+  return (
+    productUrl.startsWith("mock://") ||
+    imageUrl.includes("dummyimage.com") ||
+    productName.startsWith("TikTok Product (")
+  );
 }
 
 function getProxiedImageUrl(imageUrl: string, productUrl: string) {
@@ -173,3 +212,4 @@ function readField(product: any, fieldNames: string[]) {
 
   return undefined;
 }
+

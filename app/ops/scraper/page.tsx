@@ -14,6 +14,7 @@ export default function ScraperDashboard() {
   const [limit, setLimit] = useState(50);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
+  const [runGate, setRunGate] = useState<any>(null);
 
   // Schedule creation state
   const [schedPlatform, setSchedPlatform] = useState("Shopee");
@@ -61,9 +62,17 @@ export default function ScraperDashboard() {
     fetchStatus();
     fetchProducts();
     fetchSchedules();
+    fetch("/api/ops/health", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((payload) => setRunGate(payload.botReadiness?.find((bot: any) => bot.bot === "scraper") || null))
+      .catch(() => setRunGate({ ready: false, status: "api_failing" }));
   }, []);
 
   const runScraper = async () => {
+    if (!runGate?.ready) {
+      setStatusMsg(getRunGateMessage(runGate));
+      return;
+    }
     setRunning(true);
     setStatusMsg(`Starting ${platform} scraper (Demo Mode)...`);
     try {
@@ -90,6 +99,10 @@ export default function ScraperDashboard() {
   };
 
   const createSchedule = async () => {
+    if (!runGate?.ready) {
+      setStatusMsg(getRunGateMessage(runGate));
+      return;
+    }
     try {
       await fetch("/api/internal/scraper/schedules/create", {
         method: "POST",
@@ -191,12 +204,17 @@ export default function ScraperDashboard() {
 
           <button 
             onClick={runScraper}
-            disabled={running}
+            disabled={running || !runGate?.ready}
             className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition disabled:opacity-50"
           >
             {running ? <Activity className="animate-spin h-5 w-5" /> : <Play className="h-5 w-5" />}
             {running ? "Running Scraper..." : "Run Scraper Now"}
           </button>
+          {!runGate?.ready && (
+            <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-300">
+              {getRunGateMessage(runGate)}
+            </p>
+          )}
           
           {statusMsg && (
             <div className="p-3 bg-muted rounded-lg border border-border text-sm">
@@ -264,7 +282,8 @@ export default function ScraperDashboard() {
 
           <button 
             onClick={createSchedule}
-            className="w-full bg-surface-soft hover:bg-surface-elevated text-cyan-300 border border-border font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition"
+            disabled={!runGate?.ready}
+            className="w-full bg-surface-soft hover:bg-surface-elevated text-cyan-300 border border-border font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> Create Schedule
           </button>
@@ -384,4 +403,12 @@ export default function ScraperDashboard() {
       </div>
     </div>
   );
+}
+
+function getRunGateMessage(gate: any) {
+  if (!gate) return "API failing: readiness check is still loading or unavailable.";
+  if (gate.status === "missing_environment_variable") return `Missing environment variable: ${gate.missingEnv?.join(", ") || "required bot secret"}.`;
+  if (gate.status === "missing_table_or_column") return `Missing table/column: ${gate.missingTables?.join(", ") || "required bot schema"}.`;
+  if (gate.status === "demo_adapter_only") return "Demo adapter data — real marketplace connection not active yet.";
+  return "API failing: bot is not ready to run.";
 }

@@ -1,10 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClient } from "@/lib/supabase/serviceRoleClient";
 import { ScraperController } from "./scraperController";
 
 function getServiceSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(supabaseUrl, supabaseServiceKey);
+  return getServiceSupabaseClient();
 }
 
 export async function createSchedule(data: any) {

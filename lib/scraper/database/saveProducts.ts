@@ -1,10 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClient } from "@/lib/supabase/serviceRoleClient";
 import { ProductScrapeRecord } from "../types/ProductScrapeRecord";
 
 function getServiceSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createClient(supabaseUrl, supabaseServiceKey);
+  return getServiceSupabaseClient();
 }
 
 export async function saveProductsToSupabase(products: ProductScrapeRecord[]): Promise<{ saved: number; failed: number }> {
@@ -46,6 +44,7 @@ export async function saveProductsToSupabase(products: ProductScrapeRecord[]): P
           .eq("id", existing.id);
           
         if (updateError) {
+          console.error("Update error:", updateError);
           failed++;
         } else {
           saved++;
@@ -57,6 +56,7 @@ export async function saveProductsToSupabase(products: ProductScrapeRecord[]): P
           .insert(product);
           
         if (insertError) {
+          console.error("Insert error:", insertError);
           failed++;
         } else {
           saved++;

@@ -21,6 +21,16 @@ type OpsHealth = {
     bots: Array<Record<string, any>>;
     requirements: Record<string, boolean>;
   };
+  missingEnvironmentVariables?: string[];
+  botReadiness?: Array<{
+    bot: string;
+    ready: boolean;
+    status: string;
+    missingTables: string[];
+    missingEnv: string[];
+    demoAdapterOnly?: boolean;
+    message?: string;
+  }>;
 };
 
 type ScraperStatus = {
@@ -31,9 +41,34 @@ type ScraperStatus = {
   recommendedTables: string[];
 };
 
+type RecommendationStatus = {
+  ok: boolean;
+  queue: Array<{
+    id: string;
+    product_name: string;
+    platform: string;
+    category: string;
+    status: string;
+    featured: boolean;
+    created_at: string;
+    contributor_name: string;
+    contributor_rank: string;
+    promoted_to_ops: boolean;
+  }>;
+  summary: {
+    totalVisible: number;
+    pendingReview: number;
+    needsInfo: number;
+    approved: number;
+    promotedToOps: number;
+  } | null;
+  error?: string;
+};
+
 export default function OperationsCenter() {
   const [health, setHealth] = useState<OpsHealth | null>(null);
   const [scrapers, setScrapers] = useState<ScraperStatus | null>(null);
+  const [recommendations, setRecommendations] = useState<RecommendationStatus | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
 
@@ -65,6 +100,7 @@ export default function OperationsCenter() {
 
       setHealth(healthPayload);
       setScrapers(scraperPayload || null);
+      loadRecommendations();
       setStatus("ready");
     } catch (requestError) {
       setStatus("error");
@@ -75,6 +111,21 @@ export default function OperationsCenter() {
     }
   }
 
+  async function loadRecommendations() {
+    try {
+      const response = await fetch("/api/ops/recommendations", { cache: "no-store" });
+      const payload = await response.json();
+      setRecommendations(payload);
+    } catch {
+      setRecommendations({
+        ok: false,
+        queue: [],
+        summary: null,
+        error: "Recommendation queue could not be loaded.",
+      });
+    }
+  }
+
   const healthScore = useMemo(() => {
     if (!health) return 0;
     const checks = [
@@ -82,9 +133,17 @@ export default function OperationsCenter() {
       health.database.connected,
       health.env.supabaseUrl,
       health.env.supabaseAnonKey,
+      health.env.supabaseServiceRoleKey,
+      health.env.scraperSecret,
+      health.env.cleanerSecret,
+      health.env.researcherSecret,
+      health.env.scorerSecret,
       health.env.aiProvider === "groq" ? health.env.groqApiKey : true,
       health.scraper.requirements.productTableReachable,
       health.scraper.requirements.productRowsAvailable,
+      health.scraper.requirements.productSchemaReady,
+      ...(health.database.tables || []).map((table) => Boolean(table.reachable)),
+      ...(health.botReadiness || []).map((bot) => Boolean(bot.ready)),
     ];
     const passed = checks.filter(Boolean).length;
     return Math.round((passed / checks.length) * 100);
@@ -119,8 +178,8 @@ export default function OperationsCenter() {
         <HealthCard
           icon={Activity}
           label="Site Health"
-          value={status === "loading" ? "Checking" : `${healthScore}%`}
-          tone={healthScore >= 80 ? "good" : healthScore >= 50 ? "warn" : "bad"}
+          value={status === "loading" ? "Checking" : health?.ok ? `${healthScore}% Ready` : `${healthScore}% Degraded`}
+          tone={health?.ok && healthScore >= 90 ? "good" : healthScore >= 50 ? "warn" : "bad"}
         />
         <HealthCard
           icon={Database}
@@ -138,7 +197,7 @@ export default function OperationsCenter() {
           icon={ShieldCheck}
           label="Scraper Readiness"
           value={health?.scraper.status?.replaceAll("_", " ") || "checking"}
-          tone={health?.scraper.status === "ready_for_planning" ? "good" : "warn"}
+          tone={health?.botReadiness?.find((bot) => bot.bot === "scraper")?.ready ? "good" : "warn"}
         />
       </div>
 
@@ -167,6 +226,29 @@ export default function OperationsCenter() {
         </Panel>
       </div>
 
+      <Panel title="Bot Readiness Gate" icon={ShieldCheck}>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {(health?.botReadiness || []).map((bot) => (
+            <div key={bot.bot} className="rounded-xl border border-border bg-muted/50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-bold capitalize text-foreground">{bot.bot}</p>
+                <StatusPill ok={bot.ready} label={formatReadinessStatus(bot.status)} />
+              </div>
+              {bot.missingEnv?.length > 0 && (
+                <p className="mt-3 text-xs leading-5 text-amber-300">Missing environment variable: {bot.missingEnv.join(", ")}</p>
+              )}
+              {bot.missingTables?.length > 0 && (
+                <p className="mt-3 text-xs leading-5 text-red-300">Missing table/column: {bot.missingTables.join(", ")}</p>
+              )}
+              {bot.demoAdapterOnly && (
+                <p className="mt-3 text-xs leading-5 text-amber-300">Demo adapter data — real marketplace connection not active yet.</p>
+              )}
+              {bot.ready && <p className="mt-3 text-xs leading-5 text-emerald-300">Ready</p>}
+            </div>
+          ))}
+        </div>
+      </Panel>
+
       <Panel title="Database Health" icon={Database}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
@@ -185,7 +267,7 @@ export default function OperationsCenter() {
                 <tr key={table.table} className="text-muted-foreground">
                   <td className="border-b border-border py-3 font-bold text-foreground">{table.table}</td>
                   <td className="border-b border-border py-3">
-                    <StatusPill ok={table.reachable} label={table.reachable ? "Reachable" : "Error"} />
+                    <StatusPill ok={table.reachable} label={table.reachable ? "Ready" : "Missing table/column"} />
                   </td>
                   <td className="border-b border-border py-3">{table.count ?? 0}</td>
                   <td className="border-b border-border py-3">{table.sampleRows ?? 0}</td>
@@ -207,10 +289,15 @@ export default function OperationsCenter() {
               <div key={bot.id || bot.name} className="rounded-xl border border-border bg-muted/50 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="font-bold text-foreground">{bot.name}</h3>
-                  <StatusPill ok={bot.status === "ai_ready" || bot.status === "planned"} label={bot.status || "planned"} />
+                  <StatusPill ok={bot.status === "ai_ready" || bot.status === "ready"} label={formatReadinessStatus(bot.status || "planned")} />
                 </div>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{bot.purpose || bot.nextMilestone}</p>
                 {bot.cadence && <p className="mt-3 text-xs text-cyan-300">Cadence: {bot.cadence}</p>}
+                {(bot.status === "demo_adapter_only" || bot.id === "marketplace-scraper") && (
+                  <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 p-2 text-xs text-amber-300">
+                    Demo adapter data — real marketplace connection not active yet.
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -226,6 +313,49 @@ export default function OperationsCenter() {
           </div>
         </Panel>
       </div>
+
+      <Panel title="Community Recommendation Intake" icon={CheckCircle2}>
+        {recommendations?.summary && (
+          <div className="mb-4 grid gap-3 md:grid-cols-4">
+            <HealthMini label="Visible" value={String(recommendations.summary.totalVisible)} />
+            <HealthMini label="Pending Review" value={String(recommendations.summary.pendingReview)} />
+            <HealthMini label="Needs Info" value={String(recommendations.summary.needsInfo)} />
+            <HealthMini label="Promoted To Ops" value={String(recommendations.summary.promotedToOps)} />
+          </div>
+        )}
+
+        {recommendations?.error ? (
+          <div className="rounded-lg border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200">
+            {recommendations.error}
+          </div>
+        ) : recommendations?.queue?.length ? (
+          <div className="space-y-3">
+            {recommendations.queue.map((item) => (
+              <div key={item.id} className="rounded-xl border border-border bg-muted/50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{item.product_name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.platform} / {item.category} / {item.contributor_name} ({item.contributor_rank})
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusPill
+                      ok={item.status === "approved" || item.status === "featured" || item.status === "sent_to_product_ops"}
+                      label={formatReadinessStatus(item.status)}
+                    />
+                    {item.promoted_to_ops && <StatusPill ok={true} label="Product Ops linked" />}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No community recommendations are visible yet. New submissions should save into Supabase first, then appear here as recommendation intake.
+          </p>
+        )}
+      </Panel>
     </section>
   );
 }
@@ -284,4 +414,22 @@ function formatLabel(value: string) {
 function formatValue(value: any) {
   if (typeof value === "boolean") return value ? "Ready" : "Missing";
   return String(value || "Missing");
+}
+
+function formatReadinessStatus(value: string) {
+  if (value === "missing_environment_variable") return "Missing environment variable";
+  if (value === "missing_table_or_column") return "Missing table/column";
+  if (value === "api_failing") return "API failing";
+  if (value === "demo_adapter_only") return "Demo adapter only";
+  if (value === "ready" || value === "ai_ready") return "Ready";
+  return value.replaceAll("_", " ");
+}
+
+function HealthMini({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/50 p-4">
+      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
+    </div>
+  );
 }

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClient } from "@/lib/supabase/serverClient";
 
 export const MASTER_TABLE = "MYProductScout_Master";
 export const STAGING_TABLE = "scraped_products_staging";
@@ -42,21 +42,7 @@ export const MASTER_COLUMNS = [
 ];
 
 export function createOpsSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Missing Supabase URL or key.");
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  return getServiceSupabaseClient();
 }
 
 export function mapStagingToMaster(row: any, index: number) {

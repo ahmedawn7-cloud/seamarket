@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClient } from "@/lib/supabase/serviceRoleClient";
 import { ProductResearch, SupplierResearch, RegulatoryResearch } from "./types";
 
 export async function saveResearch(
@@ -6,9 +6,7 @@ export async function saveResearch(
   supplierResearch: Partial<SupplierResearch>[],
   regulatoryResearch: Partial<RegulatoryResearch>[]
 ) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getServiceSupabaseClient();
 
   if (productResearch.length > 0) {
     const { error: prError } = await supabase

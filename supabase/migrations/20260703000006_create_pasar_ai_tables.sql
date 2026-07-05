@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Table: chat_conversations
 CREATE TABLE IF NOT EXISTS public.chat_conversations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID, -- For future auth
   title TEXT DEFAULT 'New Conversation',
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -28,7 +28,7 @@ ON public.chat_conversations FOR SELECT TO authenticated USING (true);
 
 -- Table: chat_messages
 CREATE TABLE IF NOT EXISTS public.chat_messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID REFERENCES public.chat_conversations(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
   content TEXT NOT NULL,

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClientOrError } from "@/lib/supabase/serverClient";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { supabase, error: configError } = getServiceSupabaseClientOrError();
+    if (!supabase) {
+      return NextResponse.json({ products: [], error: configError }, { status: 503 });
+    }
 
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ products: data });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable or feature not configured." }, { status: 500 });
   }
 }
+

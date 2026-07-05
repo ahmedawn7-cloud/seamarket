@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { createClient } from "@supabase/supabase-js";
+import { getBrowserSupabaseClient } from "@/lib/supabase/browserClient";
+import { sendPasarAIMessage } from "@/lib/chat/chatClient";
 import {
   Activity,
-  BarChart3,
-  Bell,
   Bookmark,
   ChevronDown,
   DollarSign,
@@ -18,10 +17,9 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import type { ChatMessage } from "@/types/chat";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const supabase = getBrowserSupabaseClient();
 
 export default function ProductDrawer({
   product,
@@ -37,71 +35,45 @@ export default function ProductDrawer({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
   const [showSourcing, setShowSourcing] = useState(false);
+  const [aiActionLoading, setAiActionLoading] = useState<string | null>(null);
+  const [aiResultTitle, setAiResultTitle] = useState("");
+  const [aiResult, setAiResult] = useState("");
   const details = useMemo(() => normalizeProduct(product), [product]);
+  const estimatedTrend = useMemo(() => buildEstimatedTrend(details), [details]);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && product) {
-      const key = getResearchStorageKey(session);
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const current = JSON.parse(raw);
-        const savedProducts = Array.isArray(current.savedProducts) ? current.savedProducts : [];
-        const isSaved = savedProducts.some((item: any) => {
-          if (!details.id) return false;
-          return String(item?.id || item?.Product_URL || item?.Product_Name || item?.Clean_Name_AI || "") === details.id;
-        });
-        if (isSaved) {
-          setSaveStatus("saved");
-        } else {
-          setSaveStatus("idle");
-        }
-      } else {
-        setSaveStatus("idle");
-      }
-    }
-  }, [product, session, details.id]);
+    let isMounted = true;
 
-  const trendData = useMemo(() => {
-    const seed = details.id || details.name || "default";
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-      hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+    async function checkCloudSave() {
+      setSaveStatus("idle");
+      if (!supabase || !session?.user || !product) return;
+
+      const { data } = await supabase
+        .from("user_watchlist")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("product_id", details.id)
+        .maybeSingle();
+
+      if (isMounted && data) setSaveStatus("saved");
     }
-    const random = () => {
-      const x = Math.sin(hash++) * 10000;
-      return x - Math.floor(x);
+
+    checkCloudSave();
+
+    return () => {
+      isMounted = false;
     };
-    
-    const data = [];
-    let current = 20 + random() * 20;
-    let min = current;
-    let max = current;
-    for(let i=0; i<30; i++) {
-      current += (random() - 0.45) * 15; // slightly upward bias
-      if (current < 5) current = 5 + random() * 10;
-      if (current > max) max = current;
-      if (current < min) min = current;
-      data.push(current);
-    }
-    
-    const normalized = data.map(v => ((v - min) / (max - min)) * 80 + 10);
-    const points = normalized.map((val, i) => `${(i / 29) * 100},${100 - val}`).join(" ");
-    const areaPoints = `0,100 ${points} 100,100`;
-    const trendPercent = ((data[29] - data[0]) / data[0]) * 100;
-    
-    return { points, areaPoints, trendPercent };
-  }, [details.id, details.name]);
+  }, [product, session, details.id]);
 
   if (!product) return null;
 
   async function saveToWatchlist() {
     setSaveStatus("saving");
     setMessage("");
-    saveLocalProduct(details, session);
 
     if (!supabase) {
-      setSaveStatus("saved");
-      setMessage("Product saved to Research Hub.");
+      setSaveStatus("error");
+      setMessage("Supabase is not configured. Product was not saved.");
       setTimeout(() => setMessage(""), 3000);
       return;
     }
@@ -111,8 +83,8 @@ export default function ProductDrawer({
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setSaveStatus("saved");
-      setMessage("Product saved to Research Hub (Local only).");
+      setSaveStatus("error");
+      setMessage("Sign in to save products to your Supabase watchlist.");
       setTimeout(() => setMessage(""), 3000);
       return;
     }
@@ -124,8 +96,9 @@ export default function ProductDrawer({
     });
 
     if (error) {
-      setSaveStatus("saved");
-      setMessage("Product saved to Research Hub (Cloud sync failed).");
+      setSaveStatus("error");
+      console.warn("Watchlist save unavailable:", error.message);
+      setMessage("Saved products sync is not ready yet. Please try again after watchlist storage is enabled.");
       setTimeout(() => setMessage(""), 3000);
       return;
     }
@@ -133,6 +106,57 @@ export default function ProductDrawer({
     setSaveStatus("saved");
     setMessage("Product saved to Research Hub.");
     setTimeout(() => setMessage(""), 3000);
+  }
+
+  async function runAiAction(action: "analyze" | "scores" | "marketing" | "listing" | "compare") {
+    if (action === "compare") {
+      setAiResultTitle("Compare Products");
+      setAiResult("Select at least 2 products to compare.");
+      return;
+    }
+
+    const prompts: Record<string, string> = {
+      analyze: `Analyze this product opportunity for Malaysia. Explain demand, competition, risk, and whether you recommend testing it now.\nProduct: ${details.name}\nCategory: ${details.category}\nPrice: ${details.price}\nSales: ${details.sales}\nTrend rank: ${details.trendRank}`,
+      scores: `Explain the available product scores for this product. If score tables are missing, say scores are not available yet and suggest running the Scoring Bot.\nProduct: ${details.name}\nCategory: ${details.category}\nPrice: ${details.price}\nSales: ${details.sales}`,
+      marketing: `Generate TikTok hooks, Shopee keywords, and ad angles for this product.\nProduct: ${details.name}\nCategory: ${details.category}\nPrice: ${details.price}`,
+      listing: `Generate a Shopee title, Lazada title, TikTok title, short description, and bullet points for this product.\nProduct: ${details.name}\nCategory: ${details.category}\nPrice: ${details.price}`,
+      compare: "",
+    };
+
+    const labels: Record<string, string> = {
+      analyze: "Analyze Product",
+      scores: "Explain Scores",
+      marketing: "Marketing Ideas",
+      listing: "Generate Listing",
+      compare: "Compare Products",
+    };
+
+    setAiActionLoading(action);
+    setAiResultTitle(labels[action]);
+    setAiResult("");
+
+    try {
+      const history: ChatMessage[] = [
+        {
+          id: `drawer-${action}-${details.id}`,
+          role: "user",
+          content: prompts[action],
+          createdAt: Date.now(),
+        },
+      ];
+
+      const response = await sendPasarAIMessage(history, "research", {
+        userId: session?.user?.id,
+        explicitProductIds: [details.id],
+        selectedProduct: product,
+      });
+
+      setAiResult(response.content);
+    } catch (error) {
+      setAiResult(error instanceof Error ? error.message : "Pasar AI is not connected. Check AI_PROVIDER and model configuration.");
+    } finally {
+      setAiActionLoading(null);
+    }
   }
 
   return (
@@ -193,14 +217,14 @@ export default function ProductDrawer({
 
             <div className="flex w-full flex-col lg:w-2/3">
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <Kpi label="Rank" value={`#${details.rank}`} icon={TrendingUp} color="text-emerald-300" />
-                <Kpi label="Sales (Est.)" value={details.sales} icon={Activity} color="text-cyan-300" />
-                <Kpi label="Price" value={details.price} icon={DollarSign} color="text-indigo-300" />
-                <Kpi label="Reviews" value={details.reviews} icon={Star} color="text-amber-300" />
-                <Kpi label="Revenue (Est.)" value="RM 61,140" icon={DollarSign} color="text-emerald-400" />
-                <Kpi label="Margin" value="34.2%" icon={Activity} color="text-cyan-400" />
-                <Kpi label="Trend Rank" value={details.trendRank} icon={TrendingUp} color="text-emerald-300" />
-                <Kpi label="Stock Level" value={details.stock} icon={Package} color="text-amber-300" />
+                <Kpi label="Rank" value={`#${details.rank}`} color="text-emerald-300" />
+                <Kpi label="Sales (Est.)" value={details.sales} color="text-cyan-300" />
+                <Kpi label="Price" value={details.price} color="text-indigo-300" />
+                <Kpi label="Reviews" value={details.reviews} color="text-amber-300" />
+                <Kpi label="Revenue (Est.)" value={details.revenue} color={details.revenue === "Data pending" ? "text-slate-500" : "text-emerald-400"} />
+                <Kpi label="Margin" value={details.margin} color={details.margin === "Data pending" ? "text-slate-500" : "text-cyan-400"} />
+                <Kpi label="Trend Rank" value={details.trendRank} color="text-emerald-300" />
+                <Kpi label="Stock Level" value={details.stock} color="text-amber-300" />
               </div>
 
               <div className="mt-6 border-b border-border">
@@ -227,49 +251,26 @@ export default function ProductDrawer({
                     <InfoRow label="Category" value={details.category} />
                     <InfoRow label="Shipping Location" value={details.shipping} />
                     <InfoRow label="Variants" value={details.variants} />
-                    <InfoRow label="Weight (kg)" value="0.45" />
+                    <InfoRow label="Weight (kg)" value={details.weight} />
                   </div>
                 </div>
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-bold text-foreground">Sales Trend (30 Days)</h3>
-                      <span className={`text-xs ${trendData.trendPercent >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        {trendData.trendPercent >= 0 ? "+" : ""}{trendData.trendPercent.toFixed(1)}% vs last 30 days
-                      </span>
+                      <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[10px] font-bold text-cyan-300">Estimated</span>
                     </div>
-                    <div className="rounded-xl border border-border bg-card p-4 h-[180px] relative group overflow-hidden">
-                      <div className="absolute inset-0 flex flex-col justify-between py-6 px-4 pointer-events-none opacity-20">
-                        <div className="border-b border-slate-600 w-full h-0"></div>
-                        <div className="border-b border-slate-600 w-full h-0"></div>
-                        <div className="border-b border-slate-600 w-full h-0"></div>
-                        <div className="border-b border-slate-600 w-full h-0"></div>
+                    <div className="rounded-xl border border-border bg-card p-4">
+                      <TrendChart points={estimatedTrend.sales} stroke="#22d3ee" />
+                      <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-muted-foreground">
+                        <TrendLegend label="Sales" color="bg-cyan-400" value={estimatedTrend.summary.sales} />
+                        <TrendLegend label="Price" color="bg-indigo-400" value={estimatedTrend.summary.price} />
+                        <TrendLegend label="Reviews" color="bg-amber-400" value={estimatedTrend.summary.reviews} />
+                        <TrendLegend label="Demand" color="bg-emerald-400" value={estimatedTrend.summary.demand} />
                       </div>
-                      <svg className="w-full h-full text-cyan-400" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="trendGradient" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="currentColor" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="currentColor" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-                        <polyline
-                          fill="url(#trendGradient)"
-                          stroke="none"
-                          points={trendData.areaPoints}
-                        />
-                        <polyline
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]"
-                          points={trendData.points}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none backdrop-blur-[1px]">
-                        <span className="text-xs font-bold text-foreground bg-cyan-500/20 border border-cyan-400/50 px-3 py-1.5 rounded-full shadow-lg shadow-cyan-900/20">Live Sync Required</span>
-                      </div>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                        Estimated trial trend based on current rank, sales, price, and category. Real history will appear after weekly tracking runs.
+                      </p>
                     </div>
                 </div>
               </div>
@@ -333,21 +334,31 @@ export default function ProductDrawer({
             </div>
             
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
-                 Analyze Product
-              </button>
-              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
-                 Explain Scores
-              </button>
-              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
-                 Marketing Ideas
-              </button>
-              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
-                 Generate Listing
-              </button>
-              <button className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400">
-                 Compare Products
-              </button>
+              {[
+                ["analyze", "Analyze Product"],
+                ["scores", "Explain Scores"],
+                ["marketing", "Marketing Ideas"],
+                ["listing", "Generate Listing"],
+                ["compare", "Compare Products"],
+              ].map(([action, label]) => (
+                <button
+                  key={action}
+                  onClick={() => runAiAction(action as "analyze" | "scores" | "marketing" | "listing" | "compare")}
+                  disabled={Boolean(aiActionLoading)}
+                  className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-xs font-bold text-foreground transition hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {aiActionLoading === action ? "Thinking..." : label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl border border-border bg-muted/40 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-bold text-foreground">{aiResultTitle || "AI Result"}</p>
+                {aiActionLoading && <span className="text-xs font-bold text-cyan-300">Loading...</span>}
+              </div>
+              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-muted-foreground">
+                {aiResult || "Run an AI action to get a product-specific analysis, score explanation, or listing draft."}
+              </p>
             </div>
           </div>
         </div>
@@ -375,34 +386,25 @@ function normalizeProduct(product: any) {
     trendRank: String(product?.trend_rank ?? product?.Trend_Rank ?? product?.Internal_Rank ?? "N/A"),
     price: formatCurrency(product?.price ?? product?.Price_RM ?? product?.Price),
     sales: formatNumber(product?.sales ?? product?.Sales),
+    revenue: formatCurrencyOrPending(product?.revenue_calc ?? product?.Revenue_Calc ?? product?.revenue ?? product?.Revenue),
+    margin: formatPercent(product?.net_margin_calc ?? product?.Net_Margin_Calc ?? product?.margin ?? product?.Margin),
     reviews: formatNumber(product?.review_count ?? product?.Review_Count),
     stock: String(product?.stock_level ?? product?.Stock_Level ?? "Unknown"),
     shipping: String(product?.shipping_location ?? product?.Shipping_Location ?? "Unknown"),
     variants: String(product?.variant_count ?? product?.Variant_Count ?? "N/A"),
+    weight: String(product?.weight_kg ?? product?.Weight_kg ?? "Data pending"),
   };
-}
-
-function getResearchStorageKey(session?: Session | null) {
-  return `profitpilot-research-${session?.user?.email?.toLowerCase() || "local"}`;
-}
-
-function saveLocalProduct(details: any, session?: Session | null) {
-  if (typeof window === "undefined") return;
-  const key = getResearchStorageKey(session);
-  const raw = localStorage.getItem(key);
-  const current = raw ? JSON.parse(raw) : { notes: "", savedProducts: [] };
-  const id = details.id;
-  const savedProducts = Array.isArray(current.savedProducts) ? current.savedProducts : [];
-  const nextProducts = [details, ...savedProducts.filter((item: any) => {
-    const itemId = item.id || String(item?.Product_URL || item?.Product_Name || item?.Clean_Name_AI || "");
-    return itemId !== id;
-  })].slice(0, 50);
-  localStorage.setItem(key, JSON.stringify({ ...current, savedProducts: nextProducts }));
 }
 
 function formatCurrency(value: any) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "N/A";
+  return `RM ${number.toFixed(2)}`;
+}
+
+function formatCurrencyOrPending(value: any) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "Data pending";
   return `RM ${number.toFixed(2)}`;
 }
 
@@ -412,7 +414,13 @@ function formatNumber(value: any) {
   return Intl.NumberFormat("en-MY").format(number);
 }
 
-function Kpi({ label, value, icon: Icon, color }: { label: string; value: string; icon: any; color: string }) {
+function formatPercent(value: any) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "Data pending";
+  return `${number.toFixed(1)}%`;
+}
+
+function Kpi({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="flex flex-col gap-1">
       <p className="text-xs text-slate-500">{label}</p>
@@ -430,12 +438,121 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionCard({ icon: Icon, title, text }: { icon: any; title: string; text: string }) {
+function buildEstimatedTrend(details: ReturnType<typeof normalizeProduct>) {
+  const seed = createSeed(details);
+  const sales = createDeterministicSeries(seed + 17, 30, valueFromString(details.sales, 120), 0.16, 1);
+  const price = createDeterministicSeries(seed + 31, 30, valueFromCurrency(details.price, 24), 0.035, 2);
+  const reviews = createDeterministicSeries(seed + 43, 30, valueFromString(details.reviews, 45), 0.11, 1);
+  const demand = createDeterministicSeries(seed + 59, 30, deriveDemandBase(details), 0.09, 2);
+
+  return {
+    sales,
+    price,
+    reviews,
+    demand,
+    summary: {
+      sales: summarizeSeries(sales, ""),
+      price: summarizeSeries(price, "RM "),
+      reviews: summarizeSeries(reviews, ""),
+      demand: summarizeSeries(demand, ""),
+    },
+  };
+}
+
+function createSeed(details: ReturnType<typeof normalizeProduct>) {
+  const source = `${details.id}|${details.category}|${details.rank}|${details.trendRank}|${details.price}|${details.sales}|${details.reviews}`;
+  let hash = 0;
+
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 31 + source.charCodeAt(index)) >>> 0;
+  }
+
+  return hash || 97;
+}
+
+function createDeterministicSeries(seed: number, length: number, baseline: number, volatility: number, decimals: number) {
+  let value = Math.max(baseline, 1);
+  const points: number[] = [];
+
+  for (let index = 0; index < length; index += 1) {
+    const drift = Math.sin((seed + index) * 0.37) * volatility;
+    const seasonal = Math.cos((seed + index * 3) * 0.18) * (volatility / 2);
+    value = Math.max(value * (1 + drift + seasonal), baseline * 0.45, 1);
+    points.push(Number(value.toFixed(decimals)));
+  }
+
+  return points;
+}
+
+function summarizeSeries(points: number[], prefix: string) {
+  const start = points[0] ?? 0;
+  const end = points[points.length - 1] ?? start;
+  const delta = start === 0 ? 0 : ((end - start) / start) * 100;
+  const direction = delta >= 0 ? "+" : "";
+  return `${prefix}${Number(end.toFixed(1))} (${direction}${delta.toFixed(1)}%)`;
+}
+
+function valueFromCurrency(value: string, fallback: number) {
+  const number = Number(String(value).replace(/[^\d.-]/g, ""));
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function valueFromString(value: string, fallback: number) {
+  const number = Number(String(value).replace(/[^\d.-]/g, ""));
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function deriveDemandBase(details: ReturnType<typeof normalizeProduct>) {
+  const rank = valueFromString(String(details.rank), 160);
+  const sales = valueFromString(details.sales, 120);
+  const reviews = valueFromString(details.reviews, 40);
+  const trendRank = valueFromString(details.trendRank, rank);
+  const demandScore = Math.max(20, Math.min(95, 90 - rank * 0.04 + sales * 0.003 + reviews * 0.02 - trendRank * 0.02));
+  return Number(demandScore.toFixed(1));
+}
+
+function TrendChart({ points, stroke }: { points: number[]; stroke: string }) {
+  const width = 320;
+  const height = 160;
+  const padding = 12;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+
+  const path = points
+    .map((point, index) => {
+      const x = padding + (index / Math.max(points.length - 1, 1)) * (width - padding * 2);
+      const y = height - padding - ((point - min) / range) * (height - padding * 2);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <Icon className="mb-4 h-5 w-5 text-cyan-300" />
-      <h3 className="font-bold text-foreground">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-40 w-full">
+      <defs>
+        <linearGradient id="drawer-trend-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      {[0, 1, 2, 3].map((line) => {
+        const y = padding + (line / 3) * (height - padding * 2);
+        return <line key={line} x1={padding} y1={y} x2={width - padding} y2={y} stroke="rgba(148, 163, 184, 0.14)" strokeWidth="1" />;
+      })}
+      <path d={`${path} L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`} fill="url(#drawer-trend-fill)" />
+      <path d={path} fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrendLegend({ label, color, value }: { label: string; color: string; value: string }) {
+  return (
+    <div className="space-y-1 rounded-lg border border-border bg-card px-3 py-2">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+        <span>{label}</span>
+      </div>
+      <p className="text-[10px] font-bold text-foreground">{value}</p>
     </div>
   );
 }

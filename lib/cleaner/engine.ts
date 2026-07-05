@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClient } from "@/lib/supabase/serviceRoleClient";
 import { ScrapedProduct, CleanedProduct } from "./types";
 import { cleanProductName } from "./nameCleaner";
 import { extractKeywords } from "./keywordExtractor";
@@ -18,9 +18,7 @@ export async function runCleaner(limit: number = 100) {
   try {
     runId = await createCleanerRunLog(limit);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = getServiceSupabaseClient();
 
     // 1. Fetch uncleaned records. We can do an anti-join or just fetch raw and filter.
     // To do it safely in Supabase without complex raw SQL, we fetch scraped_products 

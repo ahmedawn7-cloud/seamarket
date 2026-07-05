@@ -1,9 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClient } from "@/lib/supabase/serviceRoleClient";
 
 export async function loadConversation(conversationId: string) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getServiceSupabaseClient();
 
   const { data, error } = await supabase
     .from("chat_messages")
@@ -12,16 +10,14 @@ export async function loadConversation(conversationId: string) {
     .order("timestamp", { ascending: true });
 
   if (error) {
-    console.error("Failed to load conversation:", error);
+    console.warn("Pasar AI conversation history unavailable:", error.message);
     return [];
   }
   return data || [];
 }
 
 export async function createConversation(userId?: string): Promise<string> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getServiceSupabaseClient();
 
   const { data, error } = await supabase
     .from("chat_conversations")
@@ -30,7 +26,8 @@ export async function createConversation(userId?: string): Promise<string> {
     .single();
 
   if (error || !data) {
-    throw new Error(`Failed to create conversation: ${error?.message}`);
+    console.warn("Pasar AI conversation storage unavailable:", error?.message || "unknown error");
+    return `session-${Date.now()}`;
   }
 
   return data.id;
@@ -44,11 +41,9 @@ export async function saveMessage(
   sources?: string[],
   metadata?: any
 ) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getServiceSupabaseClient();
 
-  await supabase
+  const { error } = await supabase
     .from("chat_messages")
     .insert([{
       conversation_id: conversationId,
@@ -58,4 +53,8 @@ export async function saveMessage(
       sources,
       metadata
     }]);
+
+  if (error) {
+    console.warn("Pasar AI chat message was not persisted:", error.message);
+  }
 }

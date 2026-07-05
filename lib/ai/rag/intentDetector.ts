@@ -1,4 +1,4 @@
-import { AIProvider } from "../providers/AIProvider";
+import { AIRouter } from "../AIRouter";
 
 export type DetectedIntent = 
   | "product_search"
@@ -17,7 +17,7 @@ export type DetectedIntent =
   | "general_business"
   | "unsupported";
 
-export async function detectIntent(question: string, provider: AIProvider): Promise<DetectedIntent> {
+export async function detectIntent(question: string, botName: string = "Research Hub Chatbot"): Promise<DetectedIntent> {
   // Simple heuristic/keyword fallback first for speed/safety
   const text = question.toLowerCase();
   if (text.includes("compare") && text.includes("supplier")) return "supplier_compare";
@@ -45,8 +45,12 @@ Question: "${question}"
 Return ONLY the category name. No other text.`;
 
   try {
-    const res = await provider.generate(prompt, { temperature: 0.1 });
-    const output = res.content.trim().toLowerCase();
+    const aiResult = await AIRouter.execute({
+      botName,
+      prompt,
+      requestType: "intent_detection"
+    });
+    const output = aiResult.response.content.trim().toLowerCase();
     
     const validIntents = [
       "product_search", "product_comparison", "supplier_search", "supplier_compare", 

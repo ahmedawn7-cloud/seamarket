@@ -1,24 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClientOrError } from "@/lib/supabase/serverClient";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json({ ok: false, posts: [], error: "Missing Supabase configuration." }, { status: 500 });
+  const { supabase, error: configError } = getServiceSupabaseClientOrError();
+  if (!supabase) {
+    return NextResponse.json({ ok: false, posts: [], error: configError }, { status: 503 });
   }
-
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
 
   const { data: posts, error } = await supabase
     .from("community_posts")
@@ -27,7 +16,7 @@ export async function GET() {
     .limit(50);
 
   if (error) {
-    return NextResponse.json({ ok: false, posts: [], error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: false, posts: [], error: "Service unavailable or feature not configured." }, { status: 500 });
   }
 
   const userIds = Array.from(new Set((posts ?? []).map((post: any) => post.user_id).filter(Boolean)));
@@ -76,3 +65,4 @@ function formatRelativeTime(value: string) {
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays} days ago`;
 }
+

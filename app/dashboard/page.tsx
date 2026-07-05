@@ -1,8 +1,8 @@
 const stats = [
-  { label: "Products tracked", value: "100", hint: "Weekly refresh" },
-  { label: "Saved research", value: "24", hint: "Across your workspace" },
-  { label: "Alerts active", value: "8", hint: "Price and trend changes" },
-  { label: "Community score", value: "1,240", hint: "Contributions earned" },
+  { label: "Products tracked", value: "Live", hint: "Open Product Radar" },
+  { label: "Saved research", value: "Cloud", hint: "Requires research tables" },
+  { label: "Alerts active", value: "Pending", hint: "Requires alert history" },
+  { label: "Community score", value: "Pending", hint: "Requires reward events" },
 ];
 
 const activity = [
@@ -24,7 +24,7 @@ const tasks = [
   "Connect profile photo upload to Supabase Storage",
   "Add real user settings saved in user_profiles",
   "Wire community topics and events to database tables",
-  "Replace placeholder dashboard links with real routes",
+  "Connect this legacy dashboard route to live account metrics",
 ];
 
 export default function DashboardPage() {

@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     const results = await runDueSchedules();
     return NextResponse.json({ success: true, results });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable or feature not configured." }, { status: 500 });
   }
 }
+

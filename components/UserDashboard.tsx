@@ -3,14 +3,11 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { Session } from "@supabase/supabase-js";
-import { createClient } from "@supabase/supabase-js";
 import { Award, Bell, Bookmark, Camera, Crown, MessageCircle, ShieldCheck, UserCircle } from "lucide-react";
 import type { AccessPlan } from "@/components/AuthPanel";
+import { getBrowserSupabaseClient } from "@/lib/supabase/browserClient";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
-const LOCAL_PROFILE_KEY = "profitpilot-local-profile";
+const supabase = getBrowserSupabaseClient();
 
 export default function UserDashboard({ session, accessPlan }: { session: Session | null; accessPlan: AccessPlan }) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -19,30 +16,16 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
   const [country, setCountry] = useState("Malaysia");
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [saveMessage, setSaveMessage] = useState("");
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [communityPostCount, setCommunityPostCount] = useState(0);
+  const [contributionPoints, setContributionPoints] = useState(0);
+  const [contributionRank, setContributionRank] = useState("New Scout");
+  const [contributionCount, setContributionCount] = useState(0);
+  const [storageReady, setStorageReady] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const key = `profitpilot-research-${session?.user?.email?.toLowerCase() || "local"}`;
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        try {
-          const count = JSON.parse(raw).savedProducts?.length || 0;
-          setSavedCount(count);
-        } catch (e) {}
-      }
-    }
-    
-    const localProfile = loadLocalProfile();
-    if (localProfile) {
-      setTimeout(() => {
-        setDisplayName(localProfile.displayName ?? "");
-        setBusinessType(localProfile.businessType ?? "Seller");
-        setCountry(localProfile.country ?? "Malaysia");
-        setAvatarPreview(localProfile.avatarPreview ?? null);
-      }, 0);
-    }
-
     if (!supabase || !session?.user) return;
 
     let isMounted = true;
@@ -50,12 +33,12 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
     async function loadProfile() {
       const { data, error } = await supabase!
         .from("user_profiles")
-        .select("display_name,business_type,country")
+        .select("display_name,business_type,country,avatar_url")
         .eq("id", session!.user.id)
         .maybeSingle();
 
       if (error) {
-        setSaveMessage("Loaded local profile. Run SUPABASE_ACCESS_SETUP.sql to enable cloud profile saving.");
+        setSaveMessage("Cloud profile sync is not ready yet. Your text changes will stay on this device until profile storage is enabled.");
         return;
       }
 
@@ -63,9 +46,65 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
       setDisplayName(data.display_name ?? "");
       setBusinessType(data.business_type ?? "Seller");
       setCountry(data.country ?? "Malaysia");
+      setAvatarPreview(data.avatar_url ?? null);
+    }
+
+    async function loadSavedCount() {
+      const { count } = await supabase!
+        .from("user_watchlist")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", session!.user.id);
+
+      if (isMounted) setSavedCount(count ?? 0);
+    }
+
+    async function loadCommunityStats() {
+      const { count } = await supabase!
+        .from("community_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", session!.user.id);
+
+      if (isMounted) setCommunityPostCount(count ?? 0);
+    }
+
+    async function loadContributionStats() {
+      try {
+        const response = await fetch("/api/community/contributor-profile", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${session!.access_token}` },
+        });
+        const payload = await response.json();
+
+        if (!isMounted || !response.ok || !payload.ok) {
+          if (response.status >= 500) {
+            console.warn("Contributor profile could not be loaded for dashboard.");
+          }
+          return;
+        }
+
+        setContributionPoints(Number(payload.profile?.total_points || 0));
+        setContributionRank(String(payload.profile?.current_rank || "New Scout"));
+        setContributionCount(Number(payload.profile?.submitted_count || 0));
+      } catch (error) {
+        console.warn("Contributor profile request failed:", error);
+      }
+    }
+
+    async function checkAvatarStorage() {
+      try {
+        const { data, error } = await supabase!.storage.from("avatars").list("", { limit: 1 });
+        if (!isMounted) return;
+        setStorageReady(!error && Array.isArray(data));
+      } catch {
+        if (isMounted) setStorageReady(false);
+      }
     }
 
     loadProfile();
+    loadSavedCount();
+    loadCommunityStats();
+    loadContributionStats();
+    checkAvatarStorage();
 
     return () => {
       isMounted = false;
@@ -74,41 +113,83 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
 
   async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    event.target.value = "";
+
     if (!file) return;
+    if (!supabase || !session?.user) {
+      setSaveMessage("Sign in to upload a profile photo.");
+      return;
+    }
+
+    setAvatarBusy(true);
+    setSaveMessage("");
 
     try {
-      const resized = await resizeImageForLocalProfile(file);
-      setAvatarPreview(resized);
-    } catch {
-      setSaveMessage("Could not prepare this image. Try a smaller JPG or PNG.");
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${session.user.id}/avatar-${Date.now()}.${extension}`;
+      const upload = await supabase.storage.from("avatars").upload(path, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+      if (upload.error) {
+        throw upload.error;
+      }
+
+      const publicUrl = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+      const { error } = await supabase.from("user_profiles").upsert({
+        id: session.user.id,
+        display_name: displayName.trim(),
+        business_type: businessType,
+        country: country.trim() || "Malaysia",
+        avatar_url: publicUrl,
+        plan: accessPlan,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setAvatarPreview(publicUrl);
+      setStorageReady(true);
+      setSaveMessage("Profile photo saved to Supabase.");
+    } catch (error) {
+      console.warn("Avatar upload unavailable:", error);
+      setStorageReady(false);
+      setSaveMessage("Profile photo upload will be available once avatar storage is enabled.");
+    } finally {
+      setAvatarBusy(false);
     }
   }
 
   async function saveProfile() {
     setSaveMessage("");
-    saveLocalProfile({ displayName, businessType, country, avatarPreview });
 
     if (!supabase || !session?.user) {
-      setSaveMessage("Profile saved locally. Login is required for cloud saving.");
+      setSaveMessage("Login is required for cloud profile saving.");
       return;
     }
+
+    setProfileBusy(true);
 
     const { error } = await supabase.from("user_profiles").upsert({
       id: session.user.id,
       display_name: displayName.trim(),
       business_type: businessType,
       country: country.trim() || "Malaysia",
+      avatar_url: avatarPreview,
       plan: accessPlan,
       updated_at: new Date().toISOString(),
     });
 
-    setSaveMessage(
-      error
-        ? error.message.includes("schema cache") || error.message.includes("user_profiles")
-        ? "Profile table is missing. Run SUPABASE_ACCESS_SETUP.sql in Supabase SQL Editor, then refresh this page."
-          : error.message
-        : "Profile saved to Supabase.",
-    );
+    if (error) {
+      console.warn("Profile save failed:", error.message);
+      setSaveMessage("Cloud profile sync is not ready yet. Your current details were not saved to Supabase.");
+    } else {
+      setSaveMessage("Profile saved to Supabase.");
+    }
+    setProfileBusy(false);
   }
 
   return (
@@ -116,10 +197,10 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">User dashboard</p>
         <h1 className="mt-2 text-3xl font-bold text-foreground">Account, settings, rewards, and contribution status</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
           {session?.user.email
-            ? `Signed in as ${session.user.email}. Your account data is stored with Supabase Auth and user_profiles.`
-            : "Local developer Pro access is active. Supabase profile saving still requires a real signed-in user."}
+            ? `Signed in as ${session.user.email}. Text profile fields are saved to Supabase user_profiles.`
+            : "Local developer Pro access is active. Supabase profile saving requires a real signed-in user."}
         </p>
       </div>
 
@@ -127,9 +208,13 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
         <a href="/?tab=research-hub" className="block transition hover:scale-105">
           <Stat icon={Bookmark} label="Saved products" value={String(savedCount)} />
         </a>
-        <Stat icon={MessageCircle} label="Community posts" value="0" />
-        <Stat icon={Award} label="Reward points" value="120" />
-        <Stat icon={Crown} label="Plan" value={accessPlan === "pro" ? "Pro" : "Registered"} />
+        <a href="/?tab=community" className="block transition hover:scale-105">
+          <Stat icon={MessageCircle} label="Community posts" value={String(communityPostCount)} />
+        </a>
+        <a href="/?tab=community" className="block transition hover:scale-105">
+          <Stat icon={Award} label="Reward points" value={String(contributionPoints)} />
+        </a>
+        <Stat icon={Crown} label="Rank" value={contributionRank || (accessPlan === "pro" ? "Pro" : "Registered")} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.8fr_1fr]">
@@ -144,10 +229,15 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
             </div>
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-white/5 px-4 py-3 text-sm font-bold text-foreground transition hover:border-cyan-400">
               <Camera className="h-4 w-4" />
-              Add photo
-              <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+              {avatarBusy ? "Uploading..." : storageReady === false ? "Add photo" : "Add photo"}
+              <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" disabled={avatarBusy || !session?.user} />
             </label>
           </div>
+          <p className="mb-4 rounded-lg border border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
+            {storageReady === false
+              ? "Profile photo upload will appear here once the avatars storage bucket is enabled. Your text profile fields still save to Supabase."
+              : "Display name, business type, country, plan, and avatar are stored in your Supabase profile when available."}
+          </p>
 
           <div className="space-y-4">
             <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="Your public name" />
@@ -168,9 +258,10 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
             <Field label="Country" value={country} onChange={setCountry} placeholder="Malaysia" />
             <button
               onClick={saveProfile}
+              disabled={profileBusy}
               className="rounded-lg bg-cyan-500 px-5 py-3 font-bold text-foreground transition hover:bg-cyan-300"
             >
-              Save profile
+              {profileBusy ? "Saving..." : "Save profile"}
             </button>
             {saveMessage && <p className="text-sm text-cyan-300">{saveMessage}</p>}
           </div>
@@ -221,68 +312,13 @@ export default function UserDashboard({ session, accessPlan }: { session: Sessio
           <h2 className="text-xl font-bold text-foreground">Account roadmap</h2>
         </div>
         <p className="text-sm leading-6 text-muted-foreground">
-          Next account step: add Supabase Storage uploads for profile photos and sync reward points from community actions.
+          {contributionCount > 0
+            ? `Contribution rewards are tracked in Supabase: ${contributionCount} recommendations submitted and ${contributionPoints} points recorded.`
+            : "No contributions yet. Share your first product recommendation to earn points."}
         </p>
       </section>
     </div>
   );
-}
-
-function loadLocalProfile() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(LOCAL_PROFILE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveLocalProfile(profile: {
-  displayName: string;
-  businessType: string;
-  country: string;
-  avatarPreview: string | null;
-}) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(profile));
-  } catch {
-    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify({ ...profile, avatarPreview: null }));
-  }
-}
-
-function resizeImageForLocalProfile(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onerror = () => reject(new Error("Image read failed."));
-    reader.onload = () => {
-      const image = new window.Image();
-      image.onerror = () => reject(new Error("Image decode failed."));
-      image.onload = () => {
-        const maxSize = 320;
-        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-        const width = Math.max(1, Math.round(image.width * scale));
-        const height = Math.max(1, Math.round(image.height * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d");
-
-        if (!context) {
-          reject(new Error("Canvas unavailable."));
-          return;
-        }
-
-        context.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.78));
-      };
-      image.src = String(reader.result || "");
-    };
-
-    reader.readAsDataURL(file);
-  });
 }
 
 function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {

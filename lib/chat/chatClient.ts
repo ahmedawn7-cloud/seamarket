@@ -2,7 +2,17 @@ import type { ChatApiResponse, ChatMessage, PasarAIResponse } from "@/types/chat
 
 const CHAT_TIMEOUT_MS = 12000;
 
-export async function sendPasarAIMessage(messages: ChatMessage[], role: "main" | "research" = "main"): Promise<PasarAIResponse> {
+export async function sendPasarAIMessage(
+  messages: ChatMessage[],
+  role: "main" | "research" = "main",
+  options?: {
+    conversationId?: string;
+    userId?: string;
+    explicitProductIds?: string[];
+    selectedProduct?: unknown;
+    savedNotes?: unknown[];
+  },
+): Promise<PasarAIResponse> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
@@ -10,7 +20,7 @@ export async function sendPasarAIMessage(messages: ChatMessage[], role: "main" |
     const response = await fetch("/api/ai/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, role }),
+      body: JSON.stringify({ messages, role, ...options }),
       signal: controller.signal,
     });
 
@@ -39,7 +49,14 @@ export async function sendPasarAIMessage(messages: ChatMessage[], role: "main" |
       throw new Error("Pasar AI took too long to respond. Please try again.");
     }
 
-    throw error instanceof Error ? error : new Error("Pasar AI request failed.");
+    if (error instanceof Error) {
+      if (/fetch failed|failed to fetch|networkerror/i.test(error.message)) {
+        throw new Error("Pasar AI is not connected. Check AI_PROVIDER and model configuration.");
+      }
+      throw error;
+    }
+
+    throw new Error("Pasar AI request failed.");
   } finally {
     window.clearTimeout(timeout);
   }

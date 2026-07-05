@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cleanerConfig } from "@/lib/cleaner/config";
 import { runCleaner } from "@/lib/cleaner/engine";
+import { getServiceSupabaseClientOrError } from "@/lib/supabase/serverClient";
 
 export const maxDuration = 300; // Allow Vercel up to 5 minutes to run this
 
@@ -9,6 +10,11 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get("authorization");
     if (authHeader !== `Bearer ${cleanerConfig.secret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { error: configError } = getServiceSupabaseClientOrError();
+    if (configError) {
+      return NextResponse.json({ success: false, error: configError }, { status: 503 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -21,6 +27,7 @@ export async function POST(request: Request) {
     const result = await runCleaner(limit);
     return NextResponse.json(result);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable or feature not configured." }, { status: 500 });
   }
 }
+

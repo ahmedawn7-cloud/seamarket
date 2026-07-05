@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { createClient } from "@supabase/supabase-js";
 import { Loader2, X } from "lucide-react";
+import { getBrowserSupabaseClient } from "@/lib/supabase/browserClient";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const supabase = getBrowserSupabaseClient();
 
 const OWNER_EMAIL = "ahmedawn7@gmail.com";
 const configuredSiteUrl =
@@ -27,16 +25,17 @@ export function getAccessPlan(session: Session | null, profilePlan?: string | nu
 }
 
 function getEmailRedirectUrl() {
-  if (configuredSiteUrl) {
-    return normalizeSiteUrl(configuredSiteUrl);
+  let base = fallbackProductionUrl;
+  
+  if (typeof window !== "undefined") {
+    base = window.location.origin;
+  } else if (configuredSiteUrl) {
+    base = normalizeSiteUrl(configuredSiteUrl);
   }
-  if (typeof window === "undefined") return undefined;
 
-  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) {
-    return fallbackProductionUrl;
-  }
-
-  return window.location.origin;
+  // Preserve the current path so the callback can redirect back
+  const currentPath = typeof window !== "undefined" ? window.location.pathname : "/";
+  return `${base}/auth/callback?next=${encodeURIComponent(currentPath)}`;
 }
 
 function normalizeSiteUrl(url: string) {
@@ -48,12 +47,10 @@ export default function AuthPanel({
   isOpen,
   onClose,
   onSessionChange,
-  onDevUnlock,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSessionChange: (session: Session | null, profilePlan?: string | null) => void;
-  onDevUnlock?: () => void;
 }) {
   const [mode, setMode] = useState<"signin" | "signup">("signup");
   const [email, setEmail] = useState("");
@@ -63,14 +60,7 @@ export default function AuthPanel({
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
-  const [showDevUnlock, setShowDevUnlock] = useState(false);
-  const [devUnlockOpen, setDevUnlockOpen] = useState(false);
-  const [devPassword, setDevPassword] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setShowDevUnlock(["localhost", "127.0.0.1"].includes(window.location.hostname));
-  }, []);
+  const passwordlessEnabled = process.env.NEXT_PUBLIC_ENABLE_PASSWORDLESS === "true";
 
   if (!isOpen) return null;
 
@@ -109,7 +99,7 @@ export default function AuthPanel({
     const normalizedEmail = email.trim().toLowerCase();
     if (mode === "signin" && !password.trim()) {
       setStatus("error");
-      setMessage("Enter your password, or use the passwordless login link button below.");
+      setMessage(passwordlessEnabled ? "Enter your password, or use the passwordless login link button below." : "Enter your password.");
       return;
     }
 
@@ -243,20 +233,6 @@ export default function AuthPanel({
     }
   }
 
-  function unlockLocalAdmin() {
-    if (devPassword !== "1227") {
-      setStatus("error");
-      setMessage("Incorrect local developer password.");
-      return;
-    }
-
-    localStorage.setItem("profitpilot-dev-admin", "true");
-    onDevUnlock?.();
-    setStatus("success");
-    setMessage("Local developer Pro access unlocked.");
-    onClose();
-  }
-
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
       <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl shadow-black/40">
@@ -367,14 +343,16 @@ export default function AuthPanel({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={sendPasswordlessLink}
-            disabled={status === "loading" || !email.trim()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white/5 px-5 py-3 font-bold text-foreground transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Send passwordless login link
-          </button>
+          {passwordlessEnabled && (
+            <button
+              type="button"
+              onClick={sendPasswordlessLink}
+              disabled={status === "loading" || !email.trim()}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white/5 px-5 py-3 font-bold text-foreground transition hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Send passwordless login link
+            </button>
+          )}
 
           <p className="rounded-lg border border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
             If Supabase says rate limit exceeded, wait before requesting again or connect SMTP in Supabase. If no email
@@ -394,37 +372,6 @@ export default function AuthPanel({
           .
         </p>
 
-        {showDevUnlock && (
-          <div className="mt-5 border-t border-border pt-4">
-            {!devUnlockOpen ? (
-              <button
-                type="button"
-                onClick={() => setDevUnlockOpen(true)}
-                className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-600 transition hover:text-cyan-300"
-              >
-                Dev admin
-              </button>
-            ) : (
-              <div className="grid gap-3">
-                <p className="text-xs text-slate-500">Localhost-only developer access. Hidden on Vercel.</p>
-                <input
-                  type="password"
-                  value={devPassword}
-                  onChange={(event) => setDevPassword(event.target.value)}
-                  placeholder="Developer password"
-                  className="rounded-lg border border-border bg-muted px-4 py-3 text-sm text-foreground outline-none transition focus:border-cyan-400"
-                />
-                <button
-                  type="button"
-                  onClick={unlockLocalAdmin}
-                  className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-200 transition hover:bg-cyan-400/20"
-                >
-                  Unlock local Pro access
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

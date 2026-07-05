@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     if (sourceError) {
       return NextResponse.json(
-        { ok: false, error: sourceError.message, hint: "Run SCRAPER_BOT_SETUP.sql if the staging table does not exist." },
+        { ok: false, error: "Service unavailable or feature not configured.", hint: "Run SCRAPER_BOT_SETUP.sql if the staging table does not exist." },
         { status: 500 },
       );
     }
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.from(targetTable).insert(mappedRows).select("*");
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message, code: error.code }, { status: 500 });
+      return NextResponse.json({ ok: false, error: "Service unavailable or feature not configured.", code: error.code }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -63,3 +63,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

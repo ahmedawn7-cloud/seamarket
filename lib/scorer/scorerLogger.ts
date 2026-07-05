@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClient } from "@/lib/supabase/serviceRoleClient";
 
 export interface ScorerRunSummary {
   status: "success" | "partial" | "failed";
@@ -15,9 +15,7 @@ export interface ScorerRunSummary {
 }
 
 export async function logScorerRun(runId: string, summary: ScorerRunSummary) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getServiceSupabaseClient();
 
   const { error } = await supabase
     .from("scorer_runs")
@@ -33,9 +31,7 @@ export async function logScorerRun(runId: string, summary: ScorerRunSummary) {
 }
 
 export async function createScorerRunLog(limit: number): Promise<string> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getServiceSupabaseClient();
 
   const { data, error } = await supabase
     .from("scorer_runs")

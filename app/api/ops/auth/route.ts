@@ -56,3 +56,4 @@ function sanitizeNextPath(value: unknown) {
   if (!trimmed.startsWith("/ops")) return "/ops/dashboard";
   return trimmed;
 }
+

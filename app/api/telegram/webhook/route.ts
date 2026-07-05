@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabaseClientOrError } from "@/lib/supabase/serverClient";
 
 export const dynamic = "force-dynamic";
 
@@ -67,21 +67,10 @@ async function buildReply(text: string) {
 }
 
 async function buildProductUpdateSummary() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  if (!supabaseUrl || !supabaseKey) {
-    return "Product updates are not available because Supabase environment variables are missing.";
+  const { supabase, error: configError } = getServiceSupabaseClientOrError();
+  if (!supabase) {
+    return `Product updates are not available because Supabase is not configured: ${configError}`;
   }
-
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
 
   const { data, error } = await supabase.from("MYProductScout_Master").select("*").limit(500);
 
@@ -196,3 +185,4 @@ function readField(product: any, fieldNames: string[]) {
 
   return undefined;
 }
+

@@ -1,5 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
-
 export async function logChatMetrics(
   provider: string,
   model: string,

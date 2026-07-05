@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import type { Session } from "@supabase/supabase-js";
-import { createClient } from "@supabase/supabase-js";
 import { Activity, Beaker, DollarSign, Filter, Home, LogOut, PackageSearch, Search, Sun, TrendingUp, Truck, User, Users, X } from "lucide-react";
+import { getBrowserSupabaseClient } from "@/lib/supabase/browserClient";
 import ProductCard from "@/components/ProductCard";
 import ProductDrawer from "@/components/ProductDrawer";
 import HomeView from "@/components/HomeView";
@@ -16,9 +16,7 @@ import AuthPanel, { getAccessPlan, type AccessPlan } from "@/components/AuthPane
 import AccessGate from "@/components/AccessGate";
 
 const LOGO_URL = "/profit-pilot-logo.png";
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+const supabase = getBrowserSupabaseClient();
 
 export default function Dashboard({ initialProducts }: { initialProducts: any[] }) {
   const [products, setProducts] = useState<any[]>(Array.isArray(initialProducts) ? initialProducts : []);
@@ -38,7 +36,6 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
   const [session, setSession] = useState<Session | null>(null);
   const [profilePlan, setProfilePlan] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [devAdminUnlocked, setDevAdminUnlocked] = useState(false);
   const [comfortTheme, setComfortTheme] = useState(false);
 
   useEffect(() => {
@@ -121,13 +118,16 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-    setDevAdminUnlocked(isLocalhost && localStorage.getItem("profitpilot-dev-admin") === "true");
     setComfortTheme(localStorage.getItem("profitpilot-comfort-theme") === "true");
   }, []);
 
-  const safeProducts = products;
-  const accessPlan = devAdminUnlocked ? "pro" : getAccessPlan(session, profilePlan);
+  const safeProducts = useMemo(() => {
+    return products.filter((p) => {
+      const img = p.image_url || p.Image_URL || p.original_image_url;
+      return typeof img === 'string' && img.trim().length > 0;
+    });
+  }, [products]);
+  const accessPlan = getAccessPlan(session, profilePlan);
   const productLimit = accessPlan === "pro" ? safeProducts.length : accessPlan === "registered" ? 100 : 12;
   const categoryOptions = useMemo(() => {
     const categories = new Set<string>();
@@ -143,6 +143,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     const min = Number(minPrice);
     const max = Number(maxPrice);
 
+    // TODO: move filtering and pagination to /api/products once product volume grows beyond the current preview set.
     return safeProducts.slice(0, productLimit || safeProducts.length).filter((product) => {
       const name =
         product.Clean_Name_AI ||
@@ -172,11 +173,24 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
     });
   }, [safeProducts, searchQuery, activePlatform, categoryFilter, minPrice, maxPrice, productLimit]);
 
+  const productStats = useMemo(() => {
+    const prices = safeProducts.map(getProductPriceNumber).filter((value) => Number.isFinite(value) && value > 0);
+    const sales = safeProducts.map(getProductSalesNumber).filter((value) => Number.isFinite(value) && value >= 0);
+    const margins = safeProducts.map(getProductMarginNumber).filter((value) => Number.isFinite(value));
+    const revenues = safeProducts.map(getProductRevenueNumber).filter((value) => Number.isFinite(value) && value >= 0);
+
+    return {
+      productsTracked: safeProducts.length,
+      avgPrice: prices.length ? formatCurrencyNumber(average(prices)) : "Pending",
+      avgMargin: margins.length ? `${average(margins).toFixed(1)}%` : "Pending",
+      totalSales: sales.length ? Intl.NumberFormat("en-MY").format(sum(sales)) : "Pending",
+      totalRevenue: revenues.length ? formatCompactCurrency(sum(revenues)) : "Not enough data",
+    };
+  }, [safeProducts]);
+
   async function handleSignOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
-    localStorage.removeItem("profitpilot-dev-admin");
-    setDevAdminUnlocked(false);
     setSession(null);
     setProfilePlan(null);
     setActiveTab("Home");
@@ -260,13 +274,13 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                 >
                   <Sun className="h-4 w-4" />
                 </button>
-                {session?.user || devAdminUnlocked ? (
+                {session?.user ? (
                   <>
                     <button
                       onClick={() => setActiveTab("Profile")}
                       className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-300"
                     >
-                      {devAdminUnlocked ? "Local Pro" : accessPlan === "pro" ? "Pro Access" : "Registered"}
+                      {accessPlan === "pro" ? "Pro Access" : "Registered"}
                     </button>
                     <button
                       onClick={handleSignOut}
@@ -372,6 +386,18 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                     <Filter className="h-4 w-4" />
                     Filters
                   </button>
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setActivePlatform("All");
+                      setCategoryFilter("All");
+                      setMinPrice("");
+                      setMaxPrice("");
+                    }}
+                    className="rounded-lg border border-border bg-input px-4 py-2 text-sm text-muted-foreground transition hover:border-cyan-400"
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
 
@@ -430,7 +456,7 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                     <PackageSearch className="h-4 w-4 text-cyan-400" />
                     Products Tracked
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{safeProducts.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{productStats.productsTracked}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -444,14 +470,14 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
                     <Activity className="h-4 w-4 text-amber-400" />
                     Avg. Margin
                   </div>
-                  <p className="text-2xl font-bold text-foreground">32.6%</p>
+                  <p className="text-2xl font-bold text-foreground">{productStats.avgMargin}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                     <DollarSign className="h-4 w-4 text-indigo-400" />
-                    Total Sales (Est.)
+                    Revenue (Est.)
                   </div>
-                  <p className="text-2xl font-bold text-foreground">RM 3.2M</p>
+                  <p className="text-2xl font-bold text-foreground">{productStats.totalRevenue}</p>
                 </div>
               </div>
 
@@ -553,7 +579,6 @@ export default function Dashboard({ initialProducts }: { initialProducts: any[] 
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onSessionChange={updateSession}
-        onDevUnlock={() => setDevAdminUnlocked(true)}
       />
     </div>
   );
@@ -603,6 +628,45 @@ function getProductPriceNumber(product: any) {
   const value = product?.price ?? product?.Price_RM ?? product?.Final_Price_Low ?? product?.Initial_Price_Low;
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
+}
+
+function getProductSalesNumber(product: any) {
+  const value = product?.sales ?? product?.Sales;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function getProductRevenueNumber(product: any) {
+  const value = product?.revenue_calc ?? product?.Revenue_Calc ?? product?.revenue ?? product?.Revenue;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : NaN;
+}
+
+function getProductMarginNumber(product: any) {
+  const value = product?.net_margin_calc ?? product?.Net_Margin_Calc ?? product?.margin ?? product?.Margin;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : NaN;
+}
+
+function sum(values: number[]) {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+function average(values: number[]) {
+  return values.length ? sum(values) / values.length : 0;
+}
+
+function formatCurrencyNumber(value: number) {
+  if (!Number.isFinite(value)) return "Pending";
+  return `RM ${value.toFixed(2)}`;
+}
+
+function formatCompactCurrency(value: number) {
+  if (!Number.isFinite(value)) return "Not enough data";
+  return `RM ${Intl.NumberFormat("en-MY", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value)}`;
 }
 
 function ProductSummaryModal({

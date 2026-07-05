@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           table,
-          error: error.message,
+          error: "Service unavailable or feature not configured.",
           code: error.code,
           hint: "Check the table name, RLS policy, and whether the SQL setup file was run.",
         },
@@ -69,3 +69,4 @@ function evaluateQuality(rows: any[]) {
     priceCoveragePct: Math.round((hasPrice / total) * 100),
   };
 }
+

@@ -1,21 +1,21 @@
-import { createClient } from "@supabase/supabase-js";
 import { Bot, Activity, Target, Zap, Clock, MessageSquare, AlertCircle } from "lucide-react";
+import { getServiceSupabaseClientOrError } from "@/lib/supabase/serverClient";
 
 export const revalidate = 0;
 
 export default async function PasarAIOpsPage() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const { supabase, error: configError } = getServiceSupabaseClientOrError();
 
   // We fetch basic stats here. In real production, this would query chat_messages
   // For this UI, we mock some stats if DB is empty to show the dashboard capabilities.
   
-  const { data: messages, error } = await supabase
-    .from("chat_messages")
-    .select("intent, role, metadata, timestamp")
-    .order("timestamp", { ascending: false })
-    .limit(100);
+  const { data: messages, error } = supabase
+    ? await supabase
+        .from("chat_messages")
+        .select("intent, role, metadata, timestamp")
+        .order("timestamp", { ascending: false })
+        .limit(100)
+    : { data: [], error: { message: configError } };
 
   const safeMessages = messages || [];
   

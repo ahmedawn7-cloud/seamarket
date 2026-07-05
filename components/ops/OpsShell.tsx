@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bot, BrainCircuit, DatabaseZap, LayoutDashboard, MessageSquareText, Shield, Sparkles } from "lucide-react";
+import { Bot, BrainCircuit, DatabaseZap, LayoutDashboard, MessageSquareText, Shield, Sparkles, Target } from "lucide-react";
 
 const navItems = [
   { href: "/ops/dashboard", label: "Health Monitor", icon: LayoutDashboard },
+  { href: "/product-ops", label: "Product Ops", icon: Target },
   { href: "/ops/scraper", label: "Scraper Bot", icon: Bot },
   { href: "/ops/research-bot", label: "Research Bot", icon: BrainCircuit },
   { href: "/ops/cleaner-bot", label: "Data Cleaner", icon: DatabaseZap },

@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { ScraperController } from "@/lib/scraper/core/scraperController";
 import { scraperConfig } from "@/lib/scraper/config/scraperConfig";
+import { getServiceSupabaseClientOrError } from "@/lib/supabase/serverClient";
 
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");
     if (authHeader !== `Bearer ${scraperConfig.secret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { error: configError } = getServiceSupabaseClientOrError();
+    if (configError) {
+      return NextResponse.json({ success: false, error: configError }, { status: 503 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -30,6 +36,7 @@ export async function POST(request: Request) {
     }
 
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Service unavailable or feature not configured." }, { status: 500 });
   }
 }
+

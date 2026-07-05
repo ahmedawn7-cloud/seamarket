@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Table: product_research
 CREATE TABLE IF NOT EXISTS public.product_research (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cleaned_product_id UUID REFERENCES public.cleaned_products(id) ON DELETE CASCADE,
   internal_product_id TEXT,
   research_status TEXT DEFAULT 'pending',
@@ -49,7 +49,7 @@ ON public.product_research FOR SELECT TO authenticated USING (true);
 
 -- Table: supplier_research
 CREATE TABLE IF NOT EXISTS public.supplier_research (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cleaned_product_id UUID REFERENCES public.cleaned_products(id) ON DELETE CASCADE,
   internal_product_id TEXT,
   supplier_type TEXT,
@@ -88,7 +88,7 @@ ON public.supplier_research FOR SELECT TO authenticated USING (true);
 
 -- Table: regulatory_research
 CREATE TABLE IF NOT EXISTS public.regulatory_research (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cleaned_product_id UUID REFERENCES public.cleaned_products(id) ON DELETE CASCADE,
   internal_product_id TEXT,
   country TEXT DEFAULT 'Malaysia',
@@ -129,7 +129,7 @@ ON public.regulatory_research FOR SELECT TO authenticated USING (true);
 
 -- Table: researcher_runs
 CREATE TABLE IF NOT EXISTS public.researcher_runs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   started_at TIMESTAMPTZ DEFAULT NOW(),
   finished_at TIMESTAMPTZ,
   status TEXT,

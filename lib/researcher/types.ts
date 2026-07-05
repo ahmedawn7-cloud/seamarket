@@ -21,7 +21,7 @@ export interface ProductResearch {
 export interface SupplierResearch {
   cleaned_product_id: string;
   internal_product_id: string;
-  supplier_type: "local_possible" | "international_possible" | "unknown";
+  supplier_type: string;
   supplier_name: string | null;
   supplier_url: string | null;
   supplier_country: string | null;

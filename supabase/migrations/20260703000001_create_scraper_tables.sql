@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Table: scraped_products
 CREATE TABLE IF NOT EXISTS public.scraped_products (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   scrape_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   platform TEXT NOT NULL,
   internal_rank INTEGER,
@@ -49,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_scraped_products_clean_name_ai ON public.scraped_
 
 -- Table: scraper_runs
 CREATE TABLE IF NOT EXISTS public.scraper_runs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   finished_at TIMESTAMPTZ,
   platform TEXT NOT NULL,

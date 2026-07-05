@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Table: product_scores
 CREATE TABLE IF NOT EXISTS public.product_scores (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cleaned_product_id UUID REFERENCES public.cleaned_products(id) ON DELETE CASCADE,
   scraped_product_id UUID REFERENCES public.scraped_products(id) ON DELETE CASCADE,
   internal_product_id TEXT,
@@ -55,7 +55,7 @@ ON public.product_scores FOR SELECT TO authenticated USING (true);
 
 -- Table: scorer_runs
 CREATE TABLE IF NOT EXISTS public.scorer_runs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   started_at TIMESTAMPTZ DEFAULT NOW(),
   finished_at TIMESTAMPTZ,
   status TEXT,
